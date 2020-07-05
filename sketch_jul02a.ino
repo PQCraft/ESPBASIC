@@ -49,7 +49,7 @@ void loop() {
   dummy();
 }
 void espbasic() {
-  String VER = "0.0.0.3";
+  String VER = "0.0.0.4";
   String REV = "Beta";
   printString("ESPBASIC ");
   printString("v");
@@ -85,6 +85,8 @@ void dummy() {
     rfKB();
     if (chr == 140) {fgc++; setFGColor(fgc); chr = 0;}
     if (chr == 141) {bgc++; setBGColor(bgc); chr = 0;}
+    if (chr == 142) {fgc--; setFGColor(fgc); chr = 0;}
+    if (chr == 143) {bgc--; setBGColor(bgc); chr = 0;}
     if (chr > 0) {printChar(chr);}
   } while (true);
 }
@@ -161,7 +163,7 @@ void printChar(byte c) {
   //Serial.println(tcx);
   //Serial.println(tcy);
   if (c == 13 || c == 10) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcy++; tcx = 0; c = 0; }
-  if (c == 8) { setbfrc(tcx, tcy, 0); GFX.drawChar(tcx * 8, tcy * 8, 32); tcx--; c = 0; }
+  if (c == 8) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; setbfrc(tcx, tcy, 0); GFX.drawChar(tcx * 8, tcy * 8, 32); c = 0; }
   if (c == 131) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx++; c = 0; }
   if (c == 130) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; c = 0; }
   if (c == 129) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcy++; c = 0; }
