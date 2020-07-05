@@ -6,23 +6,38 @@
 #include <stdio.h>*/
 #include "fabgl.h"
 #include <stdio.h> 
-#include <stdlib.h>
+//#include <stdlib.h>
 //Preferences preferences;
 
-fabgl::VGAController VGA;
-fabgl::PS2Controller PS2;
-fabgl::Canvas  GFX(&VGA);
+fabgl::VGAController      VGA;
+fabgl::PS2Controller      PS2;
+fabgl::Canvas       GFX(&VGA);
+SoundGenerator            SND;
+SquareWaveformGenerator   SQ0;
+SquareWaveformGenerator   SQ1;
+TriangleWaveformGenerator TR0;
+TriangleWaveformGenerator TR1;
+SawtoothWaveformGenerator ST0;
+SineWaveformGenerator     SW0;
+NoiseWaveformGenerator    WN0;
 
 unsigned long tsv;
 byte  vm;
-byte fgc;
-byte bgc;
+byte fgc = 63;
+byte bgc = 2;
 int  tcx;
 int  tcy;
 bool tcm;
 int  chr;
 int  tbp;
 char tbfr[30][40];
+char pmem[1];
+bool ctlkey;
+bool altkey;
+bool sftkey;
+byte sr;
+byte hr;
+//goto spmi;
 
 void setup() {
   Serial.begin(115200);
@@ -36,8 +51,6 @@ void setup() {
   setFGColor(fgc);
   setBGColor(bgc);  
   //vMode(1);
-  setFGColor(12);
-  setBGColor(3);
   cls();
 /*do {
     drawCursor(0, 0);
@@ -49,25 +62,25 @@ void loop() {
   dummy();
 }
 void espbasic() {
-  String VER = "0.0.0.4";
+  String VER = "0.0.0.5";
   String REV = "Beta";
-  printString("ESPBASIC ");
-  printString("v");
+  printString(F("ESPBASIC "));
+  printString(F("v"));
   printString(VER);
-  printString(" r");
+  printString(F(" r"));
   printString(REV);
-  printString("\n");
+  printString(F("\n"));
   //unsigned char pmem[16384];
-  unsigned char *srsv = (unsigned char *)malloc(8192);
+  char *srsv = (char *)malloc(8192);
   if (srsv == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
-  unsigned char *line = (unsigned char *)malloc(2048);
+  char *line = (char *)malloc(2048);
   if (line == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
   long mas = 163840;
   int acs = 16384;
   sicon(2);
   printString(F("Finding free memory...\n   Chunk size: ")); printString(String(acs)); printString(F(" bytes\n"));
   mrsv:
-  unsigned char *pmem = (unsigned char *)malloc(mas);
+  char *pmem = (char *)malloc(mas);
   if (mas <= 0) {sicon(0); printErr(6, F("")); do {} while (true);}
   if (pmem == NULL) {mas = mas - acs; goto mrsv;}
   sicon(2);
@@ -78,17 +91,41 @@ void espbasic() {
   }
   dummy();
 }
+void mkvar(String vn, byte t, String v) {
+/* 0 == int
+ * 1 == byte
+ * 2 == long
+ * 3 == string
+*/
+  //if t = 0 
+}
 void dummy() {
   tcm = 1;
   do {
     drawCursor(tcx, tcy);
     rfKB();
-    if (chr == 140) {fgc++; setFGColor(fgc); chr = 0;}
-    if (chr == 141) {bgc++; setBGColor(bgc); chr = 0;}
-    if (chr == 142) {fgc--; setFGColor(fgc); chr = 0;}
-    if (chr == 143) {bgc--; setBGColor(bgc); chr = 0;}
+    if (chr == 137) {fgc++; setFGColor(fgc); chr = 0;}
+    if (chr == 139) {bgc++; setBGColor(bgc); chr = 0;}
+    if (chr == 136) {fgc--; setFGColor(fgc); chr = 0;}
+    if (chr == 138) {bgc--; setBGColor(bgc); chr = 0;}
+    if (chr == 140) {rfScrTxt(); chr = 0;}
+    if (chr == 141) {clrTxtBfr(); rfScrTxt(); chr = 0;}
     if (chr > 0) {printChar(chr);}
   } while (true);
+}
+void rfScrTxt() {
+  for (byte i = 0; i < 30; i++) {
+    for (byte j = 0; j < 40; j++) {
+      GFX.drawChar(j * 8, i * 8, getbfrc(j, i));
+    }
+  }
+}
+void clrTxtBfr() {
+  for (byte i = 0; i < 30; i++) {
+    for (byte j = 0; j < 40; j++) {
+      setbfrc(j, i, 0);
+    }
+  }
 }
 void setFGColor(byte color) {
   fgc = color;
@@ -243,6 +280,19 @@ void rfKB() {
     bool down;
     auto inkey = keyboard->getNextVirtualKey(&down);
     if (down) {chr = keyboard->virtualKeyToASCII(inkey);}
+    ctlkey = false;
+    altkey = false;
+    sftkey = false;
+    if (keyboard->isVKDown(fabgl::VK_LCTRL) || keyboard->isVKDown(fabgl::VK_RCTRL)) {
+      ctlkey = true;
+    }
+    if (keyboard->isVKDown(fabgl::VK_LALT) || keyboard->isVKDown(fabgl::VK_RALT)) {
+      altkey = true;
+    }
+    if (keyboard->isVKDown(fabgl::VK_LSHIFT) || keyboard->isVKDown(fabgl::VK_RSHIFT)) {
+      sftkey = true;
+    }
+    if (ctlkey && altkey && chr == 127) {ESP.restart();}
     if (chr < 0 && down) {
       switch (inkey) {
         case fabgl::VK_UP:
