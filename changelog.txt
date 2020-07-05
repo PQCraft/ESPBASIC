@@ -1,0 +1,14 @@
+v0.0.0.1:
+  added dummy terminal
+v0.0.0.2:
+  enhanced dummy terminal
+  added rudimentary RAM management
+v0.0.0.3:
+  retracted RAM managment routines
+v0.0.0.4:
+  used different RAM allocating technique
+  improved dummy terminal
+  added more features to the dummy terminal
+v0.0.0.5:
+  added some keyboard routines
+  added software reset by CTRL+ALT+DEL
