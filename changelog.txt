@@ -12,3 +12,8 @@ v0.0.0.4:
 v0.0.0.5:
   added some keyboard routines
   added software reset by CTRL+ALT+DEL
+v0.0.0.6:
+  changed some routines
+v0.0.0.7:
+  improved variable save and recall
+  added some workarounds
