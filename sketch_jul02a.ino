@@ -15,16 +15,16 @@ fabgl::VGAController      VGA;
 fabgl::PS2Controller      PS2;
 fabgl::Canvas       GFX(&VGA);
 SoundGenerator            SND;
-SquareWaveformGenerator   SQ0;
+/*SquareWaveformGenerator   SQ0;
 SquareWaveformGenerator   SQ1;
 TriangleWaveformGenerator TR0;
 TriangleWaveformGenerator TR1;
 SawtoothWaveformGenerator ST0;
 SineWaveformGenerator     SW0;
-NoiseWaveformGenerator    WN0;
+NoiseWaveformGenerator    WN0;*/
 
 unsigned long tsv;
-byte          vm;
+//byte          vm;
 byte          fgc = 63;
 byte          bgc = 2;
 int           tcx;
@@ -37,13 +37,15 @@ char          tbfr[30][40];
 bool          ctlkey;
 bool          altkey;
 bool          sftkey;
-byte          sr;
-byte          hr;
+//byte          sr;
+//byte          hr;
 long          pmp;
 long          mas = 65536;
 long          pms = 65536;
 char          *pmem = (char *)malloc(mas);
-//char          *pmem = (char *)malloc(mas);
+char          *line = (char *)malloc(2048);
+//#define EBVER "0.0.0.0";
+//#define EBREV "";
 
 void setup() {
   Serial.begin(115200);
@@ -68,9 +70,7 @@ void loop() {
   dummy();
 }
 void espbasic() {
-  //String VER = "0.0.0.6";
-  //String REV = "Beta";
-  printString("ESPBASIC v0.0.0.6 rBeta\n");
+  printString("ESPBASIC v0.0.0.7 rAlpha\n");
   //unsigned char pmem[16384];
 /*char *line = (char *)malloc(2048);
   if (line == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
@@ -89,9 +89,10 @@ void espbasic() {
   printString(F("Found ")); printString(String(mas)); printString(F(" byte(s)\n"));*/
   mas = pms;
   clrpmem();
+  Serial.println(F("Started ESPBASIC"));
   pmem[pms - 1] = 255;
-  mkvar("E", 4, 0, "Test");
-  getvar("");
+  mkvar("E", 5, 0, "This is a test.");
+  getvar("E");
   printString(String(pms, DEC) + F(" bytes total.\n"));
   printString(String(getFreePM(), DEC) + F(" bytes free.\n"));
   dummy();
@@ -107,7 +108,7 @@ void dummy() {
     if (chr == 138) {bgc--; setBGColor(bgc); chr = 0;}
     if (chr == 140) {rfScrTxt(); chr = 0;}
     if (chr == 141) {clrTxtBfr(); rfScrTxt(); chr = 0;}
-    if ((chr > 31 && chr < 127) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131) {printChar(chr);}
+    if ((chr > 31 && chr < 127) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131 || chr == 13) {printChar(chr);}
   } while (true);
 }
 long getFreePM() {
@@ -125,35 +126,35 @@ void clrpmem() {
   }  
 }
 void mkvar(String vn, byte t, float vlng, String vstr) {
-  if (t > 4) {t = 0;}
-/* 0 == int
- * 1 == uint
- * 2 == byte
- * 3 == float
- * 4 == string
+  if (t > 5) {t = 1;}
+/* 1 == int
+ * 2 == uint
+ * 3 == byte
+ * 4 == float
+ * 5 == string
 */
   byte vl;
   switch (t) {
-    case 0:
-      vl = 2;
-    break;
     case 1:
       vl = 2;
     break;
     case 2:
-      vl = 1;
+      vl = 2;
     break;
     case 3:
-      vl = 4;
+      vl = 1;
     break;
     case 4:
+      vl = 4;
+    break;
+    case 5:
     vl = vstr.length();
     break;
   }
-  pmp = findCharRevPM(255, pms - 1) - vn.length() - vl - 3;
-  pmWChr(255); pmWStr(vn); pmWChr(0); pmWChr(t);
-  if (t != 4) {
-    int e;
+  pmp = findCharRevPM(255, pms - 1) - vn.length() - vl - 4;
+  pmWChr(255); pmWChr(0); pmWStr(vn); pmWChr(0); pmWChr(t);
+  if (t != 5) {
+    //int e;
     for (byte i = vl - 1; i >= 0; i--) {
       pmWChr(getByte(vlng, i));
     }
@@ -161,10 +162,16 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
   pmWChr(0);
 }
 String getvar(String vn) {
+  long vpos = findStrPM(vn, findCharRevPM(255, pms) + 1);
+  if (vpos > -1) {
+    for (long i = vpos; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
+  } else {Serial.println("var not found");}
+}
+/*String getvart(String vn) {
   for (long i = findCharRevPM(255, pms - 1); i < pms; i++) {
     Serial.println(String(pmem[i], DEC));
   }
-}
+}*/
 byte getByte(long v, byte p) {
   p = p * 8;
   return bitRead(v,p+0)+(bitRead(v,p+1)*2)+(bitRead(v,p+2)*4)+(bitRead(v,p+3)*8)+(bitRead(v,p+4)*16)+(bitRead(v,p+5)*32)+(bitRead(v,p+6)*64)+(bitRead(v,p+7)*128);
@@ -184,6 +191,31 @@ long findCharRevPM(char fc, long pos) {
     //Serial.print(F("b: ")); Serial.println(i); Serial.print("v: "); Serial.println(String(pmem[i], DEC));
     if (pmem[i] == fc) {return i;}
   }
+  return -1;
+}
+long findStrPM(String fs, long pos) {
+  long cp;
+  int s;
+  long t;
+  pos--;
+  retry:
+  Serial.println("findStrPM: ");
+  for (int i = 0; i < fs.length() + 1; i++) {
+    Serial.print(String(fs.charAt(i), DEC) + ", ");
+  }
+  Serial.println();
+  pos++;
+  if (pos > pms - 2) {return -1;}
+  cp = findCharPM(0, pos);
+  if (cp > -1) {
+    s = 1;
+    for (long i = cp; i < fs.length() + cp; i++) {
+      if (pmem[i] == fs.charAt(i)) {s++;}
+      t = i;
+    }
+  }
+  if (pmem[t] == 0) {s++;}
+  if (s == fs.length() + 2) {return pos;} else {goto retry;}
   return -1;
 }
 void pmWChr(byte wc) {
