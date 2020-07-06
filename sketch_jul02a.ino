@@ -5,8 +5,10 @@
 #include "esp_task_wdt.h"
 #include <stdio.h>*/
 #include "fabgl.h"
-#include <stdio.h> 
+//#include <stdio.h>
 //#include <stdlib.h>
+#include <esp_int_wdt.h>
+#include <esp_task_wdt.h>
 //Preferences preferences;
 
 fabgl::VGAController      VGA;
@@ -22,22 +24,26 @@ SineWaveformGenerator     SW0;
 NoiseWaveformGenerator    WN0;
 
 unsigned long tsv;
-byte  vm;
-byte fgc = 63;
-byte bgc = 2;
-int  tcx;
-int  tcy;
-bool tcm;
-int  chr;
-int  tbp;
-char tbfr[30][40];
-char pmem[1];
-bool ctlkey;
-bool altkey;
-bool sftkey;
-byte sr;
-byte hr;
-//goto spmi;
+byte          vm;
+byte          fgc = 63;
+byte          bgc = 2;
+int           tcx;
+int           tcy;
+bool          tcm;
+int           chr;
+int           tbp;
+char          tbfr[30][40];
+//char          pmem[1];
+bool          ctlkey;
+bool          altkey;
+bool          sftkey;
+byte          sr;
+byte          hr;
+long          pmp;
+long          mas = 65536;
+long          pms = 65536;
+char          *pmem = (char *)malloc(mas);
+//char          *pmem = (char *)malloc(mas);
 
 void setup() {
   Serial.begin(115200);
@@ -62,42 +68,33 @@ void loop() {
   dummy();
 }
 void espbasic() {
-  String VER = "0.0.0.5";
-  String REV = "Beta";
-  printString(F("ESPBASIC "));
-  printString(F("v"));
-  printString(VER);
-  printString(F(" r"));
-  printString(REV);
-  printString(F("\n"));
+  //String VER = "0.0.0.6";
+  //String REV = "Beta";
+  printString("ESPBASIC v0.0.0.6 rBeta\n");
   //unsigned char pmem[16384];
-  char *srsv = (char *)malloc(8192);
-  if (srsv == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
-  char *line = (char *)malloc(2048);
+/*char *line = (char *)malloc(2048);
   if (line == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
-  long mas = 163840;
-  int acs = 16384;
+  mas = 163840;
+  long acs = 98303;
   sicon(2);
   printString(F("Finding free memory...\n   Chunk size: ")); printString(String(acs)); printString(F(" bytes\n"));
   mrsv:
+  pms = mas;
+  Serial.println(mas);
+  Serial.println(pms);
   char *pmem = (char *)malloc(mas);
   if (mas <= 0) {sicon(0); printErr(6, F("")); do {} while (true);}
-  if (pmem == NULL) {mas = mas - acs; goto mrsv;}
+  if (pmem == NULL) {mas = mas - (acs + 1); goto mrsv;}
   sicon(2);
-  printString(F("Found ")); printString(String(mas)); printString(F(" bytes\n"));
-  free(srsv);
-  for (int i = 0; i < mas; i++) {
-    pmem[i] = 0;
-  }
+  printString(F("Found ")); printString(String(mas)); printString(F(" byte(s)\n"));*/
+  mas = pms;
+  clrpmem();
+  pmem[pms - 1] = 255;
+  mkvar("E", 4, 0, "Test");
+  getvar("");
+  printString(String(pms, DEC) + F(" bytes total.\n"));
+  printString(String(getFreePM(), DEC) + F(" bytes free.\n"));
   dummy();
-}
-void mkvar(String vn, byte t, String v) {
-/* 0 == int
- * 1 == byte
- * 2 == long
- * 3 == string
-*/
-  //if t = 0 
 }
 void dummy() {
   tcm = 1;
@@ -110,8 +107,92 @@ void dummy() {
     if (chr == 138) {bgc--; setBGColor(bgc); chr = 0;}
     if (chr == 140) {rfScrTxt(); chr = 0;}
     if (chr == 141) {clrTxtBfr(); rfScrTxt(); chr = 0;}
-    if (chr > 0) {printChar(chr);}
+    if ((chr > 31 && chr < 127) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131) {printChar(chr);}
   } while (true);
+}
+long getFreePM() {
+  long fm = findCharRevPM(255, pms - 1);
+  long fmt = fm;
+  for (long i = 0; i < fmt; i++) {
+    if (pmem[i] != 0) {fm--;}
+  }
+  return fm;
+}
+void clrpmem() {
+  for (long i = 0; i < pms; i++) {
+    pmem[i] = 0;
+    if (pmem[i] != 0) {Serial.print("Format error: byte " + String(i, DEC) + " did not comply.");}
+  }  
+}
+void mkvar(String vn, byte t, float vlng, String vstr) {
+  if (t > 4) {t = 0;}
+/* 0 == int
+ * 1 == uint
+ * 2 == byte
+ * 3 == float
+ * 4 == string
+*/
+  byte vl;
+  switch (t) {
+    case 0:
+      vl = 2;
+    break;
+    case 1:
+      vl = 2;
+    break;
+    case 2:
+      vl = 1;
+    break;
+    case 3:
+      vl = 4;
+    break;
+    case 4:
+    vl = vstr.length();
+    break;
+  }
+  pmp = findCharRevPM(255, pms - 1) - vn.length() - vl - 3;
+  pmWChr(255); pmWStr(vn); pmWChr(0); pmWChr(t);
+  if (t != 4) {
+    int e;
+    for (byte i = vl - 1; i >= 0; i--) {
+      pmWChr(getByte(vlng, i));
+    }
+  } else {pmWStr(vstr);}
+  pmWChr(0);
+}
+String getvar(String vn) {
+  for (long i = findCharRevPM(255, pms - 1); i < pms; i++) {
+    Serial.println(String(pmem[i], DEC));
+  }
+}
+byte getByte(long v, byte p) {
+  p = p * 8;
+  return bitRead(v,p+0)+(bitRead(v,p+1)*2)+(bitRead(v,p+2)*4)+(bitRead(v,p+3)*8)+(bitRead(v,p+4)*16)+(bitRead(v,p+5)*32)+(bitRead(v,p+6)*64)+(bitRead(v,p+7)*128);
+}
+byte setByte(long v, byte p) {
+  p = p * 8;
+  return bitRead(v,p+0)+(bitRead(v,p+1)*2)+(bitRead(v,p+2)*4)+(bitRead(v,p+3)*8)+(bitRead(v,p+4)*16)+(bitRead(v,p+5)*32)+(bitRead(v,p+6)*64)+(bitRead(v,p+7)*128);
+}
+long findCharPM(byte fc, long pos) {
+  for (long i = pos; i < pms; i++) {
+    if (pmem[i] == fc) {return i;}
+  }
+  return -1;
+}
+long findCharRevPM(char fc, long pos) {
+  for (long i = pos; i >= 0; i--) {
+    //Serial.print(F("b: ")); Serial.println(i); Serial.print("v: "); Serial.println(String(pmem[i], DEC));
+    if (pmem[i] == fc) {return i;}
+  }
+  return -1;
+}
+void pmWChr(byte wc) {
+  pmem[pmp] = wc; pmp++;
+}
+void pmWStr(String s) {
+  for (int i = 0; i < s.length(); i++) {
+    pmWChr(s.charAt(i));
+  }
 }
 void rfScrTxt() {
   for (byte i = 0; i < 30; i++) {
@@ -169,7 +250,7 @@ unsigned long sec() {
   return round(millis() / 1000);
 }
 unsigned long cblink() {
-  return round(millis() / 250);
+  return round(millis() / 200);
 }
 void cls() {
   GFX.fillRectangle(0, 0, VGA.getScreenWidth() - 1, VGA.getScreenHeight() - 1);
@@ -180,7 +261,7 @@ unsigned long timer() {
 void resetTimer(unsigned long v) {
   tsv = millis() - v;
 }
-void vMode(byte m) {
+/*void vMode(byte m) {
   m = bitRead(m, 1) * 2 + bitRead(m, 0);
 //if (m == 0) { VGA.setResolution(VGA_256x384_60Hz); }
   if (m == 0) { VGA.setResolution(VGA_320x200_75Hz); }
@@ -194,8 +275,8 @@ void vMode(byte m) {
   setFGColor(fgc);
   setBGColor(bgc);
   //cls();
-}
-void printChar(byte c) {
+}*/
+void printChar(char c) {
   //Serial.println(c);
   //Serial.println(tcx);
   //Serial.println(tcy);
@@ -292,7 +373,8 @@ void rfKB() {
     if (keyboard->isVKDown(fabgl::VK_LSHIFT) || keyboard->isVKDown(fabgl::VK_RSHIFT)) {
       sftkey = true;
     }
-    if (ctlkey && altkey && chr == 127) {ESP.restart();}
+    if (ctlkey && altkey && chr == 127) {esp_task_wdt_init(1,true); esp_task_wdt_add(NULL); while(true);}
+    if (ctlkey && sftkey && chr == 27) {ESP.restart();}
     if (chr < 0 && down) {
       switch (inkey) {
         case fabgl::VK_UP:
