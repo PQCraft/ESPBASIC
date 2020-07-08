@@ -127,6 +127,14 @@ void espbasic() {
           printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
         }
       }
+      if (chr == 127) {
+        if (noc - lp > 0) {
+          noc--;
+          for (int i = lp; i < 2047; i++) {line[i] = line[i + 1];}; line[2047] = 0;
+          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;  
+          printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
+        }
+      }
       if (lp < noc && chr == 131) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx++; lp++; printChar(0);}
       if (lp > 0 && chr == 130) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; lp--; printChar(0);}
       if (chr == 145) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx = ltcx; tcy = ltcy; lp = 0;}
@@ -149,7 +157,7 @@ void espbasic() {
     if (CMD == "") {
       nac = false;
     }
-    if (CMD == "EXIT") {
+    if (CMD == "DUMMY") {
       exitBASIC = true;
       nac = false;
     }
@@ -157,7 +165,7 @@ void espbasic() {
       cls(); locate(0, 0);
       nac = false;
     }
-    if (CMD == "MEMORY") {
+    if (CMD == "MEMORY" || CMD == "MEM") {
       printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
       nac = false;
     }
@@ -179,7 +187,7 @@ void dummy() {
     if (chr == 138) {bgc--; setBGColor(bgc); chr = 0;}
     if (chr == 140) {rfScrTxt(); chr = 0;}
     if (chr == 141) {clrTxtBfr(); rfScrTxt(); chr = 0;}
-    if ((chr > 31 && chr < 127) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131 || chr == 13) {printChar(chr);}
+    if ((chr > 31 && chr < 128) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131 || chr == 13) {printChar(chr);}
   } while (true);
 }
 String getFrontStr(String s, int c) {
