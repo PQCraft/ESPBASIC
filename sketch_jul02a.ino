@@ -117,7 +117,7 @@ void espbasic() {
   int noc = 0;
   tcm = 1;
   do {
-    printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0; sc = 0;
+    printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0; noc = 0; sc = 0;
     do {
       rfKB();
       drawCursor(tcx, tcy);
@@ -142,8 +142,10 @@ void espbasic() {
       if (lp < noc && chr == 131) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx++; lp++; printChar(0);}
       if (lp > 0 && chr == 130) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; lp--; printChar(0);}
       if (chr == 145) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx = ltcx; tcy = ltcy; lp = 0;}
-      if (chr == 146) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx = ltcx; tcy = ltcy; printString(line); ltcy = ltcy - sc; sc = 0; lp = noc;}
+      if (chr == 146) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); ltcy = ltcy - sc; sc = 0; 
+      tcx = ltcx; tcy = ltcy; printString(line); ltcy = ltcy - sc; sc = 0; lp = noc; }
       if (chr > 31 && chr < 127 && lp < 2048) {
+        ltcy = ltcy - sc; sc = 0;
         if (tcm) {line[lp]=chr; printChar(chr); if (lp == noc) {noc++;} lp++;} else {
           noc++;
           for (int i = 2047; i > lp; i--) {line[i] = line[i - 1];}; line[lp]=chr;
@@ -151,6 +153,7 @@ void espbasic() {
           ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
         }
       }
+      if (chr != 0) {Serial.println("---"); Serial.println(tcx); Serial.println(tcy); Serial.println(lp); Serial.println(noc);}
     } while (chr != 13);
     tcx = ltcx; tcy = ltcy; printString(line);
     printChar(13);
@@ -158,8 +161,6 @@ void espbasic() {
     CMD = lineString + ' '; CMD.toUpperCase();
     ARG = getBackStr(lineString, CMD.indexOf(' ') + 1);
     ARG.trim();
-    Serial.println(CMD.indexOf(' '));
-    Serial.println(getBackStr(lineString, CMD.indexOf(' ')));
     CMD = getFrontStr(CMD, CMD.indexOf(' '));
     //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
     nac = true;
@@ -181,6 +182,7 @@ void espbasic() {
     if (CMD == "PRINT" || CMD == "?") {
       if (ARG != "") {
         printString(getval(ARG));
+        if (gve == 1) {printErr(4, "");}
         printChar(13);
         nac = false;
       }
@@ -222,7 +224,7 @@ String getval(String in) {
       String thold = "";
       String teval = "";
       int epp = in.lastIndexOf(')');
-      if (epp == -1) {gve = 1;}
+      if (epp == -1) {gve = 1; return "";}
       for (int j = 0; j < i; j++) {thold += in.charAt(j);}
       for (int j = i + 1; j < epp; j++) {teval += in.charAt(j);}
       thold += getval(teval);
@@ -230,7 +232,7 @@ String getval(String in) {
       in = thold;
     }
     if (cchr == '"') {inString = !inString; isString = true;}
-    if ((cchr == '-' || cchr == '*' || cchr == '/') && !inString && isString) {gve = 1;}
+    if ((cchr == '-' || cchr == '*' || cchr == '/') && !inString && isString) {gve = 1; return "";}
   }
   return in;
 }
