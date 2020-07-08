@@ -17,3 +17,7 @@ v0.0.0.6:
 v0.0.0.7:
   improved variable save and recall
   added some workarounds
+v0.0.0.8:
+  working variable save and recall for strings
+  changed variable save technique
+  text at startup uses variable r/w routines
