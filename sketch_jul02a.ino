@@ -25,8 +25,10 @@ NoiseWaveformGenerator    WN0;*/
 
 unsigned long tsv;
 //byte          vm;
-byte          fgc = 63;
-byte          bgc = 2;
+//byte          fgc = 63;
+//byte          bgc = 2;
+byte          fgc = 60;
+byte          bgc = 1;
 int           tcx;
 int           tcy;
 bool          tcm;
@@ -44,6 +46,7 @@ long          mas = 65536;
 long          pms = 65536;
 char          *pmem = (char *)malloc(mas);
 char          *line = (char *)malloc(2048);
+long          vmp = pms - 1;
 //#define EBVER "0.0.0.0";
 //#define EBREV "";
 
@@ -89,14 +92,51 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.8");
-  delvar("REV");
-  //mkvar("REV", 5, 0, "Alpha");
+  mkvar("VER", 5, 0, "0.0.0.9");
+  mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
   //printString(getvar("E"));
   printString(String(pms, DEC) + F(" bytes total.\n"));
   printString(String(getFreePM(), DEC) + F(" bytes free.\n"));
+  int lp = 0;
+  int ttcx;
+  int ttcy;
+  int ltcx;
+  int ltcy;
+  bool exitBASIC = false;
+  String lineString;
+  String CMD;
+  tcm = 1;
+  do {
+    printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0;
+    do {
+      rfKB();
+      drawCursor(tcx, tcy);
+      if (chr == 8) {
+        if (lp > 0) {
+          lp--;
+          for (int i = lp; i > 2047; i++) {line[i] = line[i + 1];}; line[2047]=0;
+          printChar(8);
+          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy;
+        }
+      }
+      if (chr > 31 && chr < 127 && lp < 2048) {
+        if (tcm) {line[lp]=chr; printChar(chr); lp++;} else {
+          for (int i = 2047; i > lp; i--) {line[i] = line[i - 1];}; line[lp]=chr;
+          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy; lp++; printChar(255);
+        }
+      }
+    } while (chr != 13);
+    tcx = ltcx; tcy = ltcy; printString(line);
+    lineString = line; lineString.trim();
+    printChar(13);
+    CMD = lineString + ' '; CMD.toUpperCase();
+    if (getFrontStr(CMD, 5) == "EXIT ") {exitBASIC = true;}
+    for (long i = 0; i < 2047; i++) {
+      line[i] = 0;
+    }  
+  } while (!exitBASIC);
   dummy();
 }
 void dummy() {
@@ -113,8 +153,15 @@ void dummy() {
     if ((chr > 31 && chr < 127) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131 || chr == 13) {printChar(chr);}
   } while (true);
 }
+String getFrontStr(String s, int c) {
+  String ns;
+  for (int i = 0; i < c; i++) {
+    ns = ns + s.charAt(i);
+  }
+  return ns;
+}
 long getFreePM() {
-  long fm = findCharRevPM(255, pms - 1);
+  long fm = vmp;
   long fmt = fm;
   for (long i = 0; i < fmt; i++) {
     if (pmem[i] != 0) {fm--;}
@@ -124,10 +171,14 @@ long getFreePM() {
 void clrpmem() {
   for (long i = 0; i < pms; i++) {
     pmem[i] = 0;
-    if (pmem[i] != 0) {Serial.print("Format error: byte " + String(i, DEC) + " did not comply.");}
+  }  
+  for (long i = 0; i < 2047; i++) {
+    line[i] = 0;
   }  
 }
 void mkvar(String vn, byte t, float vlng, String vstr) {
+  Serial.println(findvar(vn, vmp + 1));
+  if (findvar(vn, vmp + 1) != -1) {return;};
   if (t > 5) {t = 1;}
 /* 1 == int
  * 2 == uint
@@ -157,7 +208,8 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
   long srchofst;
   int za;
   char chold;
-  pmp = findCharRevPM(255, pms - 1) - vsize;
+  pmp = vmp - vsize;
+  vmp = pmp;
   for (long i = findCharRevPM(255, pms - 1); i < pms; i++) {
     srchofst = 0;
     do {
@@ -176,9 +228,10 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
     }
   } else {pmWStr(vstr);}
   pmWChr(0);
+  for (long i = vmp; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
 }
 String getvar(String vn) {
-  long vpos = findvar(vn, findCharRevPM(255, pms) + 1);
+  long vpos = findvar(vn, vmp + 1);
   if (vpos == -1) {return "";}
   byte vtype = getvart(vn);
   if (vtype == 0) {return "";}
@@ -197,7 +250,7 @@ String getvar(String vn) {
   } else {Serial.println("var not found");}*/
 }
 void delvar(String vn) {
-  long vpos = findvar(vn, findCharRevPM(255, pms) + 1);
+  long vpos = findvar(vn, vmp + 1);
   if (vpos > -1) {
     long vdp = vpos + vn.length() + 3;
     do {
@@ -207,7 +260,7 @@ void delvar(String vn) {
   }
 }
 byte getvart(String vn) {
-  long vpos = findvar(vn, findCharRevPM(255, pms) + 1);
+  long vpos = findvar(vn, vmp + 1);
   if (vpos == -1) {return 0;}
   return pmem[vpos + vn.length() + 3];
 }
@@ -350,11 +403,12 @@ void printChar(char c) {
   //Serial.println(tcy);
   if (c == 13 || c == 10) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcy++; tcx = 0; c = 0; }
   if (c == 8) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; setbfrc(tcx, tcy, 0); GFX.drawChar(tcx * 8, tcy * 8, 32); c = 0; }
+  if (c == 127) { GFX.drawChar(tcx * 8, tcy * 8, 32); setbfrc(tcx, tcy, 0); c = 0; }
   if (c == 131) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx++; c = 0; }
   if (c == 130) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; c = 0; }
   if (c == 129) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcy++; c = 0; }
   if (c == 128) { GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); if (tcy > 0) {tcy--;} c = 0; }
-  if (c == 255) { tcx++; }
+  if (c == 255) { tcx++; c = 0; }
   if (c != 0) { GFX.drawChar(tcx * 8, tcy * 8, c); setbfrc(tcx, tcy, c); tcx++; }
   if (tcx < 0 && tcy > 0) { tcy--; tcx = tcx + VGA.getScreenWidth() / 8; }
   if (tcx < 0 && tcy <= 0) { tcx++; }
@@ -418,9 +472,6 @@ void locate(int x, int y) {
   tcx = x;
   tcy = y;
 }
-void bas_ff() {
-    
-}
 void rfKB() { 
   chr = 0;
   auto keyboard = PS2.keyboard();
@@ -443,6 +494,7 @@ void rfKB() {
     }
     if (ctlkey && altkey && chr == 127) {esp_task_wdt_init(1,true); esp_task_wdt_add(NULL); while(true);}
     if (ctlkey && sftkey && chr == 27) {ESP.restart();}
+    if (chr > 96 && chr < 123 && sftkey) {chr = chr - 32;}
     if (chr < 0 && down) {
       switch (inkey) {
         case fabgl::VK_UP:
