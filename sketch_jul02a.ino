@@ -70,7 +70,6 @@ void loop() {
   dummy();
 }
 void espbasic() {
-  printString("ESPBASIC v0.0.0.7 rAlpha\n");
   //unsigned char pmem[16384];
 /*char *line = (char *)malloc(2048);
   if (line == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
@@ -89,10 +88,13 @@ void espbasic() {
   printString(F("Found ")); printString(String(mas)); printString(F(" byte(s)\n"));*/
   mas = pms;
   clrpmem();
-  Serial.println(F("Started ESPBASIC"));
   pmem[pms - 1] = 255;
-  mkvar("E", 5, 0, "This is a test.");
-  getvar("E");
+  mkvar("VER", 5, 0, "0.0.0.8");
+  delvar("REV");
+  //mkvar("REV", 5, 0, "Alpha");
+  Serial.println(F("Started ESPBASIC"));
+  printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
+  //printString(getvar("E"));
   printString(String(pms, DEC) + F(" bytes total.\n"));
   printString(String(getFreePM(), DEC) + F(" bytes free.\n"));
   dummy();
@@ -148,11 +150,25 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
       vl = 4;
     break;
     case 5:
-    vl = vstr.length();
+      vl = vstr.length();
     break;
   }
-  pmp = findCharRevPM(255, pms - 1) - vn.length() - vl - 4;
-  pmWChr(255); pmWChr(0); pmWStr(vn); pmWChr(0); pmWChr(t);
+  long vsize = vn.length() + vl + 5;
+  long srchofst;
+  int za;
+  char chold;
+  pmp = findCharRevPM(255, pms - 1) - vsize;
+  for (long i = findCharRevPM(255, pms - 1); i < pms; i++) {
+    srchofst = 0;
+    do {
+      chold = pmem[i] + srchofst;
+      srchofst++;
+    } while (chold == 0);
+    if (srchofst > vsize) {pmp = i;}
+  }
+  Serial.print(F("srchofst: ")); Serial.println(String(srchofst, DEC)); Serial.print(F("vsize: ")); Serial.println(String(vsize, DEC)); 
+  Serial.print(F("pmp: ")); Serial.println(String(pmp, DEC));
+  pmWChr(255); pmWChr(0); pmWChr('!'); pmWStr(vn); pmWChr(0); pmWChr(t);
   if (t != 5) {
     //int e;
     for (byte i = vl - 1; i >= 0; i--) {
@@ -162,24 +178,47 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
   pmWChr(0);
 }
 String getvar(String vn) {
-  long vpos = findStrPM(vn, findCharRevPM(255, pms) + 1);
-  if (vpos > -1) {
-    for (long i = vpos; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
-  } else {Serial.println("var not found");}
-}
-/*String getvart(String vn) {
-  for (long i = findCharRevPM(255, pms - 1); i < pms; i++) {
-    Serial.println(String(pmem[i], DEC));
+  long vpos = findvar(vn, findCharRevPM(255, pms) + 1);
+  if (vpos == -1) {return "";}
+  byte vtype = getvart(vn);
+  if (vtype == 0) {return "";}
+  String vval;
+  if (vtype == 5) {
+    long vdp = vpos + vn.length() + 3;
+    do {
+      vdp++;
+      if (pmem[vdp] != 0) {vval = vval + pmem[vdp];}
+    } while (pmem[vdp] != 0);
   }
-}*/
+  return vval;
+  //for (long i = findCharRevPM(255, pms); i < pms; i++) {Serial.println(String(pmem[i], DEC));};
+  /*if (vpos > -1) {
+    for (long i = vpos; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
+  } else {Serial.println("var not found");}*/
+}
+void delvar(String vn) {
+  long vpos = findvar(vn, findCharRevPM(255, pms) + 1);
+  if (vpos > -1) {
+    long vdp = vpos + vn.length() + 3;
+    do {
+      vdp++;
+      if (pmem[vdp] != 0) {pmem[vdp] = 0;}
+    } while (pmem[vdp] != 0);
+  }
+}
+byte getvart(String vn) {
+  long vpos = findvar(vn, findCharRevPM(255, pms) + 1);
+  if (vpos == -1) {return 0;}
+  return pmem[vpos + vn.length() + 3];
+}
 byte getByte(long v, byte p) {
   p = p * 8;
   return bitRead(v,p+0)+(bitRead(v,p+1)*2)+(bitRead(v,p+2)*4)+(bitRead(v,p+3)*8)+(bitRead(v,p+4)*16)+(bitRead(v,p+5)*32)+(bitRead(v,p+6)*64)+(bitRead(v,p+7)*128);
 }
-byte setByte(long v, byte p) {
+/*byte setByte(long v, byte p) {
   p = p * 8;
   return bitRead(v,p+0)+(bitRead(v,p+1)*2)+(bitRead(v,p+2)*4)+(bitRead(v,p+3)*8)+(bitRead(v,p+4)*16)+(bitRead(v,p+5)*32)+(bitRead(v,p+6)*64)+(bitRead(v,p+7)*128);
-}
+}*/
 long findCharPM(byte fc, long pos) {
   for (long i = pos; i < pms; i++) {
     if (pmem[i] == fc) {return i;}
@@ -193,28 +232,25 @@ long findCharRevPM(char fc, long pos) {
   }
   return -1;
 }
-long findStrPM(String fs, long pos) {
+long findvar(String fs, long pos) {
   long cp;
   int s;
   long t;
+  fs = '!' + fs;
   pos--;
   retry:
-  Serial.println("findStrPM: ");
-  for (int i = 0; i < fs.length() + 1; i++) {
-    Serial.print(String(fs.charAt(i), DEC) + ", ");
-  }
-  Serial.println();
   pos++;
   if (pos > pms - 2) {return -1;}
   cp = findCharPM(0, pos);
   if (cp > -1) {
     s = 1;
-    for (long i = cp; i < fs.length() + cp; i++) {
-      if (pmem[i] == fs.charAt(i)) {s++;}
+    for (long i = cp + 1; i <= fs.length() + cp; i++) {
+      if (pmem[i] == fs.charAt(i - cp - 1)) {s++;}
       t = i;
     }
   }
-  if (pmem[t] == 0) {s++;}
+  if (pmem[t + 1] == 0) {s++;}
+  if (pmem[t + 2] == 0) {goto retry;}
   if (s == fs.length() + 2) {return pos;} else {goto retry;}
   return -1;
 }
