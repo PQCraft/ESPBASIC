@@ -94,7 +94,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.9");
+  mkvar("VER", 5, 0, "0.0.0.10");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -109,6 +109,8 @@ void espbasic() {
   bool exitBASIC = false;
   String lineString;
   String CMD;
+  bool nac = true;
+  int noc = 0;
   tcm = 1;
   do {
     printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0; sc = 0;
@@ -117,15 +119,21 @@ void espbasic() {
       drawCursor(tcx, tcy);
       if (chr == 8) {
         if (lp > 0) {
+          noc--;
           lp--;
           for (int i = lp; i < 2047; i++) {line[i] = line[i + 1];}; line[2047] = 0;
           printChar(8);
-          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); 
-          noscroll = true; printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
+          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;  
+          printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
         }
       }
+      if (lp < noc && chr == 131) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx++; lp++; printChar(0);}
+      if (lp > 0 && chr == 130) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx--; lp--; printChar(0);}
+      if (chr == 145) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx = ltcx; tcy = ltcy; lp = 0;}
+      if (chr == 146) {GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); tcx = ltcx; tcy = ltcy; printString(line); ltcy = ltcy - sc; sc = 0; lp = noc;}
       if (chr > 31 && chr < 127 && lp < 2048) {
-        if (tcm) {line[lp]=chr; printChar(chr); lp++;} else {
+        if (tcm) {line[lp]=chr; printChar(chr); if (lp == noc) {noc++;} lp++;} else {
+          noc++;
           for (int i = 2047; i > lp; i--) {line[i] = line[i - 1];}; line[lp]=chr;
           ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy - sc;
           ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
@@ -133,10 +141,27 @@ void espbasic() {
       }
     } while (chr != 13);
     tcx = ltcx; tcy = ltcy; printString(line);
-    lineString = line; lineString.trim();
     printChar(13);
+    lineString = line; lineString.trim();
     CMD = lineString + ' '; CMD.toUpperCase();
-    if (getFrontStr(CMD, 5) == "EXIT ") {exitBASIC = true;}
+    CMD = getFrontStr(CMD, CMD.indexOf(' '));
+    nac = true;
+    if (CMD == "") {
+      nac = false;
+    }
+    if (CMD == "EXIT") {
+      exitBASIC = true;
+      nac = false;
+    }
+    if (CMD == "CLS") {
+      cls(); locate(0, 0);
+      nac = false;
+    }
+    if (CMD == "MEMORY") {
+      printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
+      nac = false;
+    }
+    if (nac) {printErr(3, CMD);}
     for (long i = 0; i < 2047; i++) {
       line[i] = 0;
     }  
@@ -181,7 +206,7 @@ void clrpmem() {
   }  
 }
 void mkvar(String vn, byte t, float vlng, String vstr) {
-  Serial.println(findvar(vn, vmp + 1));
+  //Serial.println(findvar(vn, vmp + 1));
   if (findvar(vn, vmp + 1) != -1) {return;};
   if (t > 5) {t = 1;}
 /* 1 == int
@@ -222,8 +247,8 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
     } while (chold == 0);
     if (srchofst > vsize) {pmp = i;}
   }
-  Serial.print(F("srchofst: ")); Serial.println(String(srchofst, DEC)); Serial.print(F("vsize: ")); Serial.println(String(vsize, DEC)); 
-  Serial.print(F("pmp: ")); Serial.println(String(pmp, DEC));
+  //Serial.print(F("srchofst: ")); Serial.println(String(srchofst, DEC)); Serial.print(F("vsize: ")); Serial.println(String(vsize, DEC)); 
+  //Serial.print(F("pmp: ")); Serial.println(String(pmp, DEC));
   pmWChr(255); pmWChr(0); pmWChr('!'); pmWStr(vn); pmWChr(0); pmWChr(t);
   if (t != 5) {
     //int e;
@@ -232,7 +257,7 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
     }
   } else {pmWStr(vstr);}
   pmWChr(0);
-  for (long i = vmp; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
+  //for (long i = vmp; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
 }
 String getvar(String vn) {
   long vpos = findvar(vn, vmp + 1);
@@ -379,6 +404,7 @@ unsigned long cblink() {
 }
 void cls() {
   GFX.fillRectangle(0, 0, VGA.getScreenWidth() - 1, VGA.getScreenHeight() - 1);
+  clrTxtBfr();
 }
 unsigned long timer() {
   return millis() - tsv;
@@ -426,7 +452,7 @@ void printString(String s) {
   }
 }
 void printErr(byte e, String etxt) {
-  sicon(0); if (e > 6) {e = 0;}
+  sicon(0); if (e > 6 || e < 0) {e = 0;}
   switch (e) {
     case 0:
       printString(F("UNKNOWN ERROR"));
@@ -471,6 +497,7 @@ void printErr(byte e, String etxt) {
       }
     break;
   }
+  printChar(13);
 }
 void locate(int x, int y) {
   tcx = x;
@@ -569,6 +596,18 @@ void rfKB() {
           break;
         case fabgl::VK_KP_INSERT:
           tcm = !tcm;
+          break;
+        case fabgl::VK_HOME:
+          chr = 145;
+          break;
+        case fabgl::VK_END:
+          chr = 146;
+          break;
+        case fabgl::VK_KP_HOME:
+          chr = 145;
+          break;
+        case fabgl::VK_KP_END:
+          chr = 146;
           break;
       }
     }
