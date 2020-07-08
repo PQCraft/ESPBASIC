@@ -66,10 +66,12 @@ void setup() {
   setBGColor(bgc);  
   //vMode(1);
   cls();
-/*do {
+  tcm = 1;
+  do {
     drawCursor(0, 0);
-    delay(50);
-  } while (sec() < 2);*/
+    delay(5);
+  } while (timer() < 1950);
+  resetTimer(0);
 }
 void loop() {
   espbasic();
@@ -583,7 +585,74 @@ void rfKB() {
     if (ctlkey && altkey && chr == 127) {esp_task_wdt_init(1,true); esp_task_wdt_add(NULL); while(true);}
     if (ctlkey && sftkey && chr == 27) {ESP.restart();}
     if (chr > 96 && chr < 128 && sftkey) {chr = chr - 32;}
-    if (chr > 32 && chr < 65 && sftkey) {chr = chr - 32;}
+    if (sftkey) {
+      switch (chr) {
+        case 48:
+          chr = 41;
+          break;
+        case 49:
+          chr = 33;
+          break;
+        case 50:
+          chr = 64;
+          break;
+        case 51:
+          chr = 35;
+          break;
+        case 52:
+          chr = 36;
+          break;
+        case 53:
+          chr = 37;
+          break;
+        case 54:
+          chr = 94;
+          break;
+        case 55:
+          chr = 38;
+          break;
+        case 56:
+          chr = 42;
+          break;
+        case 57:
+          chr = 40;
+          break;
+        case 45:
+          chr = 95;
+          break;
+        case 61:
+          chr = 43;
+          break;
+        case 91:
+          chr = 123;
+          break;
+        case 93:
+          chr = 125;
+          break;
+        case 92:
+          chr = 124;
+          break;
+        case 59:
+          chr = 58;
+          break;
+        case 39:
+          chr = 34;
+          break;
+        case 44:
+          chr = 60;
+          break;
+        case 46:
+          chr = 62;
+          break;
+        case 47:
+          chr = 63;
+          break;
+        case 96:
+          chr = 126;
+          break;
+        
+      }
+    }
     if (chr < 0 && down) {
       switch (inkey) {
         case fabgl::VK_UP:
