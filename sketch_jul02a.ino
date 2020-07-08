@@ -47,6 +47,8 @@ long          pms = 65536;
 char          *pmem = (char *)malloc(mas);
 char          *line = (char *)malloc(2048);
 long          vmp = pms - 1;
+bool          noscroll = false;
+byte          sc;
 //#define EBVER "0.0.0.0";
 //#define EBREV "";
 
@@ -109,22 +111,24 @@ void espbasic() {
   String CMD;
   tcm = 1;
   do {
-    printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0;
+    printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0; sc = 0;
     do {
       rfKB();
       drawCursor(tcx, tcy);
       if (chr == 8) {
         if (lp > 0) {
           lp--;
-          for (int i = lp; i > 2047; i++) {line[i] = line[i + 1];}; line[2047]=0;
+          for (int i = lp; i < 2047; i++) {line[i] = line[i + 1];}; line[2047] = 0;
           printChar(8);
-          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy;
+          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); 
+          noscroll = true; printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
         }
       }
       if (chr > 31 && chr < 127 && lp < 2048) {
         if (tcm) {line[lp]=chr; printChar(chr); lp++;} else {
           for (int i = 2047; i > lp; i--) {line[i] = line[i - 1];}; line[lp]=chr;
-          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy; lp++; printChar(255);
+          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy - sc;
+          ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
         }
       }
     } while (chr != 13);
@@ -413,7 +417,7 @@ void printChar(char c) {
   if (tcx < 0 && tcy > 0) { tcy--; tcx = tcx + VGA.getScreenWidth() / 8; }
   if (tcx < 0 && tcy <= 0) { tcx++; }
   if (tcx >= VGA.getScreenWidth() / 8)  { tcx = 0; tcy++; }
-  if (tcy >= VGA.getScreenHeight() / 8) { tcy--; GFX.scroll(0, -8); tbp++; cbfrcln(); }
+  if (tcy >= VGA.getScreenHeight() / 8 && !noscroll) { tcy--; GFX.scroll(0, -8); tbp++; cbfrcln(); sc++; }
 }
 void printString(String s) {
   //Serial.println(s.length());
