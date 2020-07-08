@@ -49,6 +49,7 @@ char          *line = (char *)malloc(2048);
 long          vmp = pms - 1;
 bool          noscroll = false;
 byte          sc;
+byte          gve = 0;
 //#define EBVER "0.0.0.0";
 //#define EBREV "";
 
@@ -94,7 +95,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.10");
+  mkvar("VER", 5, 0, "0.0.0.11");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -109,6 +110,7 @@ void espbasic() {
   bool exitBASIC = false;
   String lineString;
   String CMD;
+  String ARG;
   bool nac = true;
   int noc = 0;
   tcm = 1;
@@ -152,9 +154,18 @@ void espbasic() {
     printChar(13);
     lineString = line; lineString.trim();
     CMD = lineString + ' '; CMD.toUpperCase();
+    ARG = getBackStr(lineString, CMD.indexOf(' ') + 1);
+    ARG.trim();
+    Serial.println(CMD.indexOf(' '));
+    Serial.println(getBackStr(lineString, CMD.indexOf(' ')));
     CMD = getFrontStr(CMD, CMD.indexOf(' '));
+    //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
     nac = true;
     if (CMD == "") {
+      nac = false;
+    }
+    if (CMD == "RESET") {
+      ESP.restart();
       nac = false;
     }
     if (CMD == "DUMMY") {
@@ -164,6 +175,13 @@ void espbasic() {
     if (CMD == "CLS") {
       cls(); locate(0, 0);
       nac = false;
+    }
+    if (CMD == "PRINT" || CMD == "?") {
+      if (ARG != "") {
+        printString(getval(ARG));
+        printChar(13);
+        nac = false;
+      }
     }
     if (CMD == "MEMORY" || CMD == "MEM") {
       printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
@@ -190,9 +208,40 @@ void dummy() {
     if ((chr > 31 && chr < 128) || chr == 8 || chr == 128 || chr == 129 || chr == 130 || chr == 131 || chr == 13) {printChar(chr);}
   } while (true);
 }
+String getval(String in) {
+  bool isString = false;
+  bool inString = false;
+  String cbfr = "";
+  char cchr = 0;
+  gve = 0;
+  for (int i = 0; i < in.length(); i++) {
+    cchr = in.charAt(i);
+    if (cchr == '(' && !inString) {
+      String thold = "";
+      String teval = "";
+      int epp = in.lastIndexOf(')');
+      if (epp == -1) {gve = 1;}
+      for (int j = 0; j < i; j++) {thold += in.charAt(j);}
+      for (int j = i + 1; j < epp; j++) {teval += in.charAt(j);}
+      thold += getval(teval);
+      for (int j = epp + 1; j < in.length(); j++) {thold += in.charAt(j);}
+      in = thold;
+    }
+    if (cchr == '"') {inString = !inString; isString = true;}
+    if ((cchr == '-' || cchr == '*' || cchr == '/') && !inString && isString) {gve = 1;}
+  }
+  return in;
+}
 String getFrontStr(String s, int c) {
   String ns;
   for (int i = 0; i < c; i++) {
+    ns = ns + s.charAt(i);
+  }
+  return ns;
+}
+String getBackStr(String s, int c) {
+  String ns;
+  for (int i = c; i < s.length(); i++) {
     ns = ns + s.charAt(i);
   }
   return ns;
@@ -533,7 +582,8 @@ void rfKB() {
     }
     if (ctlkey && altkey && chr == 127) {esp_task_wdt_init(1,true); esp_task_wdt_add(NULL); while(true);}
     if (ctlkey && sftkey && chr == 27) {ESP.restart();}
-    if (chr > 96 && chr < 123 && sftkey) {chr = chr - 32;}
+    if (chr > 96 && chr < 128 && sftkey) {chr = chr - 32;}
+    if (chr > 32 && chr < 65 && sftkey) {chr = chr - 32;}
     if (chr < 0 && down) {
       switch (inkey) {
         case fabgl::VK_UP:
