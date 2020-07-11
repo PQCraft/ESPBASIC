@@ -182,7 +182,7 @@ void espbasic() {
     if (CMD == "PRINT" || CMD == "?") {
       if (ARG != "") {
         printString(getval(ARG));
-        if (gve == 1) {printErr(4, "");} else {printChar(13);}
+        if (gve > 0) {if (gve == 1) {printErr(4, "");} if (gve == 2) {printErr(5, "");}} else {printChar(13);}
       }
       nac = false;
     }
@@ -212,42 +212,45 @@ void dummy() {
   } while (true);
 }
 String getval(String in) {
-  bool isString = false;
+  String ops = "+-*/";
+  bool vtn = 0;
   bool inString = false;
-  bool inVar = false;
-  String cbfr = "";
   char cchr = 0;
-  String out = "";
-  String opTbl = "+-*/^";
-  int opNum = -1;
-  int vsp = 0;
+  String cbfr = "";
   in.trim();
-  gve = 0;
-  if (opTbl.indexOf(in.charAt(0)) != -1) {gve = 1; return "";}
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
-    //Serial.println(cchr); Serial.println(String(inVar, DEC)); Serial.println(String(inString, DEC)); 
-    if (cchr == '"') {isString = true; inString = !inString;}
-    if (inVar && cchr == '"') {gve = 1; return "";}
-    if (!inString) {
-      opNum = opTbl.indexOf(in.charAt(0));
-      if (opNum == -1 && cchr != ' ') {
-        inVar = true;
-        cbfr += cchr;
-      } else {
-        vsp = i;
-        inVar = false;
-        if (cbfr != "") {
-          int bbl = cbfr.length();
-          String tmpSwp = getFrontStr(in, vsp - 1);
-          tmpSwp += getvar(cbfr);
-          tmpSwp += getBackStr(in, i + 1);
-          int ebl = cbfr.length();
-          i += ebl - bbl;
-        }
-      }
+    if (cchr == '"') {if (!vtn && !inString) {inString = !inString;} else if (vtn && }
+    int opnum = ops.indexOf(cchr);
+    if (opnum != -1 && !inString) {
+      cbfr += cchr;
+    } else {
+      
     }
   }
+}
+boolean isNum(String str) {
+  unsigned int stringLength = str.length();
+  if (stringLength == 0) {
+    return false;
+  }
+  boolean seenDecimal = false;
+  for(unsigned int i = 0; i < stringLength; ++i) {
+    if (isDigit(str.charAt(i))) {
+      continue;
+    } else if (i == 0 && str.charAt(0) == '-') {
+      continue;
+    }
+    if (str.charAt(i) == '.') {
+      if (seenDecimal) {
+        return false;
+      }
+      seenDecimal = true;
+      continue;
+    }
+    return false;
+  }
+  return true;
 }
 String runFunc(String f, String a) {
   return "";
