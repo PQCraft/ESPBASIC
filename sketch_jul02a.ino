@@ -212,24 +212,27 @@ void dummy() {
   } while (true);
 }
 String getval(String in) {
-  String ops = "+-*/";
-  bool vtn = 0;
-  bool inString = false;
-  char cchr = 0;
+  gve = 0;
   String cbfr = "";
+  bool sfo = false;
+  bool inString = false;
+  String out;
   in.trim();
+  if (isOp(in.charAt(0))) {gve = 1; return "";}
   for (int i = 0; i < in.length(); i++) {
-    cchr = in.charAt(i);
-    if (cchr == '"') {if (!vtn && !inString) {inString = !inString;} else if (vtn && }
-    int opnum = ops.indexOf(cchr);
-    if (opnum != -1 && !inString) {
-      cbfr += cchr;
-    } else {
-      
+    char cchr = in.charAt(i);
+    if (cchr == ' ' && in.charAt(i + 1) != '(') {
+      in = getFrontStr(in, i) + getBackStr(in, i + 1);
     }
   }
+  
+  return out;
 }
-boolean isNum(String str) {
+bool isOp(char tc) {
+  String ops = "+-*/^";
+  return (ops.indexOf(tc) > -1);
+}
+bool isNum(String str) {
   unsigned int stringLength = str.length();
   if (stringLength == 0) {
     return false;
