@@ -153,7 +153,7 @@ void espbasic() {
           ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
         }
       }
-      if (chr != 0) {Serial.println("---"); Serial.println(tcx); Serial.println(tcy); Serial.println(lp); Serial.println(noc);}
+      //if (chr != 0) {Serial.println("---"); Serial.println(tcx); Serial.println(tcy); Serial.println(lp); Serial.println(noc);}
     } while (chr != 13);
     tcx = ltcx; tcy = ltcy; printString(line);
     printChar(13);
@@ -182,10 +182,9 @@ void espbasic() {
     if (CMD == "PRINT" || CMD == "?") {
       if (ARG != "") {
         printString(getval(ARG));
-        if (gve == 1) {printErr(4, "");}
-        printChar(13);
-        nac = false;
+        if (gve == 1) {printErr(4, "");} else {printChar(13);}
       }
+      nac = false;
     }
     if (CMD == "MEMORY" || CMD == "MEM") {
       printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
@@ -215,26 +214,43 @@ void dummy() {
 String getval(String in) {
   bool isString = false;
   bool inString = false;
+  bool inVar = false;
   String cbfr = "";
   char cchr = 0;
+  String out = "";
+  String opTbl = "+-*/^";
+  int opNum = -1;
+  int vsp = 0;
+  in.trim();
   gve = 0;
+  if (opTbl.indexOf(in.charAt(0)) != -1) {gve = 1; return "";}
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
-    if (cchr == '(' && !inString) {
-      String thold = "";
-      String teval = "";
-      int epp = in.lastIndexOf(')');
-      if (epp == -1) {gve = 1; return "";}
-      for (int j = 0; j < i; j++) {thold += in.charAt(j);}
-      for (int j = i + 1; j < epp; j++) {teval += in.charAt(j);}
-      thold += getval(teval);
-      for (int j = epp + 1; j < in.length(); j++) {thold += in.charAt(j);}
-      in = thold;
+    //Serial.println(cchr); Serial.println(String(inVar, DEC)); Serial.println(String(inString, DEC)); 
+    if (cchr == '"') {isString = true; inString = !inString;}
+    if (inVar && cchr == '"') {gve = 1; return "";}
+    if (!inString) {
+      opNum = opTbl.indexOf(in.charAt(0));
+      if (opNum == -1 && cchr != ' ') {
+        inVar = true;
+        cbfr += cchr;
+      } else {
+        vsp = i;
+        inVar = false;
+        if (cbfr != "") {
+          int bbl = cbfr.length();
+          String tmpSwp = getFrontStr(in, vsp - 1);
+          tmpSwp += getvar(cbfr);
+          tmpSwp += getBackStr(in, i + 1);
+          int ebl = cbfr.length();
+          i += ebl - bbl;
+        }
+      }
     }
-    if (cchr == '"') {inString = !inString; isString = true;}
-    if ((cchr == '-' || cchr == '*' || cchr == '/') && !inString && isString) {gve = 1; return "";}
   }
-  return in;
+}
+String runFunc(String f, String a) {
+  return "";
 }
 String getFrontStr(String s, int c) {
   String ns;
