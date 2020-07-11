@@ -217,15 +217,29 @@ String getval(String in) {
   bool sfo = false;
   bool inString = false;
   String out;
+  int vsp = 0;
   in.trim();
   if (isOp(in.charAt(0))) {gve = 1; return "";}
+  if (isOp(in.charAt(in.length()-1))) {gve = 1; return "";}
   for (int i = 0; i < in.length(); i++) {
     char cchr = in.charAt(i);
     if (cchr == ' ' && in.charAt(i + 1) != '(') {
       in = getFrontStr(in, i) + getBackStr(in, i + 1);
     }
   }
-  
+  for (int i = 0; i < in.length(); i++) {
+    if (cchr == '"') {inString = !inString;}
+    char cchr = in.charAt(i);
+    if (isOp(cchr)) {
+      if (cbfr != "") {
+        in = getFrontStr(in, 0) + getvar(cbfr) + getBackStr(in, vsp + 1);
+      }
+    } else {
+      if (cchr = ' ') {
+        
+      }
+    }
+  }
   return out;
 }
 bool isOp(char tc) {
