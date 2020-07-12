@@ -234,7 +234,9 @@ void espbasic() {
       printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
     } 
-    if (CMD == "CRASH") {
+    /*
+      //Uncomment this section to enable the crash command
+      if (CMD == "CRASH") {
       sicon(3); printString("Are you sure?");
       ck:
       rfKB();
@@ -249,16 +251,23 @@ void espbasic() {
       randomSeed(timer());
       long rip;
       do {
-        rip = random(-69632, 163840);
+        rip = random(-98304, 165940);
         rfKB();
         drawCursor(tcx, tcy);
         pmem[rip] = random(0, 256 * chr);
+        tbfr[random(-16, 65)][random(-4, 41)] = random(0, 256);
+        GFX.setPenColor(random(0, 256), random(0, 256), random(0, 256));
+        GFX.setBrushColor(random(0, 256), random(0, 256), random(0, 256));
+        GFX.drawChar(random(-16384, 16384), random(-16384, 16384), random(0, 256));
+        setFGColor(fgc);
+        setBGColor(bgc);
         rfScrTxt();
       } while (true);
       whew:
       printChar(13);
       nac = false;
-    } 
+    }
+    */
     if (nac) {
       printErr(3, CMD);
     }
@@ -949,8 +958,8 @@ void printErr(byte e, String etxt) {
   printChar(13);
 }
 void locate(int x, int y) {
-  tcx = x;
-  tcy = y;
+  tcx = x * 8;
+  tcy = y * 8;
 }
 void rfKB() {
   chr = 0;
