@@ -219,6 +219,9 @@ String getval(String in) {
   String out;
   int vsp = 0;
   in.trim();
+//temporary
+  return in;
+// ^^^^^^^^
   if (isOp(in.charAt(0))) {gve = 1; return "";}
   if (isOp(in.charAt(in.length()-1))) {gve = 1; return "";}
   for (int i = 0; i < in.length(); i++) {
@@ -228,8 +231,8 @@ String getval(String in) {
     }
   }
   for (int i = 0; i < in.length(); i++) {
-    if (cchr == '"') {inString = !inString;}
     char cchr = in.charAt(i);
+    if (cchr == '"') {inString = !inString;}
     if (isOp(cchr)) {
       if (cbfr != "") {
         in = getFrontStr(in, 0) + getvar(cbfr) + getBackStr(in, vsp + 1);
