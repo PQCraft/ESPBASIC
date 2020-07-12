@@ -68,11 +68,11 @@ void setup() {
   //vMode(1);
   cls();
   tcm = 1;
-  do {
+  /*do {
     drawCursor(0, 0);
     delay(5);
   } while (timer() < 1950);
-  resetTimer(0);
+  resetTimer(0);*/
 }
 void loop() {
   espbasic();
@@ -122,17 +122,15 @@ void espbasic() {
     do {
       rfKB();
       drawCursor(tcx, tcy);
-      if (chr == 8) {
-        if (lp > 0) {
-          noc--;
-          lp--;
-          for (int i = lp; i < 2047; i++) {
-            line[i] = line[i + 1];
-          }; line[2047] = 0;
-          printChar(8);
-          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;
-          printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
-        }
+      if (chr == 8 && lp > 0) {
+        noc--;
+        lp--;
+        for (int i = lp; i < 2047; i++) {
+          line[i] = line[i + 1];
+        }; line[2047] = 0;
+        printChar(8);
+        ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;
+        printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
       }
       if (chr == 127) {
         if (noc - lp > 0) {
@@ -157,7 +155,7 @@ void espbasic() {
         printChar(0);
       }
       if (chr == 145) {
-        GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
+        GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); ltcy = ltcy - sc; sc = 0;
         tcx = ltcx;
         tcy = ltcy;
         lp = 0;
@@ -232,6 +230,35 @@ void espbasic() {
       printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
       nac = false;
     }
+    if (CMD == "SYSINFO" || CMD == "SYSINF") {
+      printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
+      nac = false;
+    } 
+    if (CMD == "CRASH") {
+      sicon(3); printString("Are you sure?");
+      ck:
+      rfKB();
+      drawCursor(tcx, tcy);
+      if (chr == 'y' || chr == 'Y') {
+        goto oof;
+      } else if (chr != 0) {
+        goto whew;
+      }
+      goto ck;
+      oof:
+      randomSeed(timer());
+      long rip;
+      do {
+        rip = random(-69632, 163840);
+        rfKB();
+        drawCursor(tcx, tcy);
+        pmem[rip] = random(0, 256 * chr);
+        rfScrTxt();
+      } while (true);
+      whew:
+      printChar(13);
+      nac = false;
+    } 
     if (nac) {
       printErr(3, CMD);
     }
