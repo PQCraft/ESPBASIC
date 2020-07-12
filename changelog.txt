@@ -3,12 +3,13 @@ v0.0.0.11:
   improved dummy terminal
   improved keyboard routines
   fixed prompt home key line beginning offset
-  added BASIC command: PRINT (may also be accessed using ?)
-  added BASIC command: SYSINFO (may also be accessed using SYSINF)
+  added BASIC command: PRINT (can also be accessed using ?)
+  added BASIC command: SYSINFO (can also be accessed using SYSINF)
+  renamed code from sketch_jul02a.ino to ESPBASIC.ino
 v0.0.0.10:
   improved dummy terminal
   added BASIC command: CLS
-  added BASIC command: MEMORY (may also be accessed using MEM)
+  added BASIC command: MEMORY (can also be accessed using MEM)
   replaced BASIC command EXIT with DUMMY due to future conflicts
   improved BASIC prompt
 v0.0.0.9:
