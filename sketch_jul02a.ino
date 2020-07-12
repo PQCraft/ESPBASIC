@@ -281,7 +281,6 @@ void dummy() {
   } while (true);
 }
 String getval(String in) {
-  Serial.println("in: " + in);
   gve = 0;
   gvt = 0;
   String cbfr = "";
@@ -327,8 +326,9 @@ String getval(String in) {
       jcis = true;
       isString = true;
     }
-    if (!inString) {
+    if (true/*!inString*/) {
       if (isOp(cchr)) {
+        if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {goto svd;}
         if (cbfr != "") {
           osl = in.length();
           if (!isNum(cbfr)) {
@@ -346,10 +346,11 @@ String getval(String in) {
             } else if (getvart(cbfr) == -1) {
               if (isAlphaNumeric(cbfr.charAt(0)) && cbfr.charAt(cbfr.length() - 1) == ')') {
                 in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
-                if (!(isString == getfunct(cbfr) && isNumber != getfunct(cbfr))); 
+                if (isNumber == true && getfunct(cbfr) == 1) {gve = 2; return "";}
               } else if (cbfr.charAt(0) == '(' && cbfr.charAt(cbfr.length() - 1) == ')') {
                 if (getChoppedStr(cbfr, 1, 1) != "") {
                   in = getFrontStr(in, vbp) + getval(getChoppedStr(cbfr, 1, 1)) + getBackStr(in, vep + 1);
+                  if (isNumber == true && gvt == 1) {gve = 2; return "";}
                 } else {
                   if (isString) {
                     in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
@@ -357,7 +358,6 @@ String getval(String in) {
                     in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
                   }
                 }
-                if (!(isString == gvt && isNumber != gvt)) {gve = 2; return "";}
               } else if (cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
@@ -374,6 +374,7 @@ String getval(String in) {
           } else {
             isNumber = true;
           }
+          svd:
           cbfr = "";
         } else {
           gve = 1;
@@ -390,17 +391,19 @@ String getval(String in) {
       inString = false;
     }
   }
-  if ((isString && isNumber) || (!isString && !isNumber)) {
+  if (!isString && !isNumber) {isNumber = true;}
+  if (isString && isNumber) {
     gve = 2;
     return "";
   }
   in = getFrontStr(in, in.length() - 1);
+  //if (isNumber && in == "") {in = "0.00";}
   gvt = isString;
   out = in;
   return out;
 }
 String getfunc(String str) {
-  return "";
+  return "0.00";
 }
 bool getfunct(String str) {
   return false;
