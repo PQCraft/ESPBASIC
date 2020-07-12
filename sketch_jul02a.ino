@@ -182,7 +182,7 @@ void espbasic() {
     if (CMD == "PRINT" || CMD == "?") {
       if (ARG != "") {
         printString(getval(ARG));
-        if (gve > 0) {if (gve == 1) {printErr(4, "");} if (gve == 2) {printErr(5, "");}} else {printChar(13);}
+        if (gve > 0) {if (gve == 1) {printErr(4, "");} else if (gve == 2) {printErr(5, "");}} else {printChar(13);}
       }
       nac = false;
     }
@@ -217,32 +217,58 @@ String getval(String in) {
   bool sfo = false;
   bool inString = false;
   String out;
-  int vsp = 0;
+  int vep = 0;
+  int vbp = 0;
   in.trim();
 //temporary
-  return in;
+//return in;
 // ^^^^^^^^
   if (isOp(in.charAt(0))) {gve = 1; return "";}
   if (isOp(in.charAt(in.length()-1))) {gve = 1; return "";}
   for (int i = 0; i < in.length(); i++) {
     char cchr = in.charAt(i);
-    if (cchr == ' ' && in.charAt(i + 1) != '(') {
-      in = getFrontStr(in, i) + getBackStr(in, i + 1);
-    }
-  }
-  for (int i = 0; i < in.length(); i++) {
-    char cchr = in.charAt(i);
     if (cchr == '"') {inString = !inString;}
-    if (isOp(cchr)) {
-      if (cbfr != "") {
-        in = getFrontStr(in, 0) + getvar(cbfr) + getBackStr(in, vsp + 1);
-      }
-    } else {
-      if (cchr = ' ') {
-        
-      }
+    if (cchr == ' ' && !inString) {
+      in = getFrontStr(in, i) + getBackStr(in, i + 1); i--;
     }
   }
+  inString = false;
+  in += '+';
+  bool svsp = false;
+  char cchr = 0;
+  int osl = 0;
+  int nsl = 0;
+  bool isString = false;
+  bool isNumber = false;  
+  for (int i = 0; i < in.length(); i++) {
+    cchr = in.charAt(i);
+    bool jcis = false;
+    if (cchr == '"' && !inString) {inString = true; jcis = true; isString = true;}
+    if (!inString) {
+      if (isOp(cchr)) {
+        if (cbfr != "" && !isNum(cbfr)) {
+          osl = in.length();
+          if (getvart(cbfr) == 5) {
+            in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
+            isString = true;
+          } else {
+            in = getFrontStr(in, vbp) + getvar(cbfr).toFloat() + getBackStr(in, vep + 1);
+            isNumber = true;
+          }
+          nsl = in.length();
+          i += nsl - osl;
+          svsp = false;
+          cbfr = "";
+        }
+      } else {
+        cbfr += cchr; vep = i; if (!svsp) {vbp = i; svsp = true;}
+      }
+    }
+    if (cchr == '"' && inString && !jcis) {inString = false;}
+  }
+  if (isString && isNumber) {gve = 2; return "";}
+  in = getFrontStr(in, in.length() - 1);
+  out = in;
   return out;
 }
 bool isOp(char tc) {
@@ -276,14 +302,14 @@ String runFunc(String f, String a) {
   return "";
 }
 String getFrontStr(String s, int c) {
-  String ns;
+  String ns = "";
   for (int i = 0; i < c; i++) {
     ns = ns + s.charAt(i);
   }
   return ns;
 }
 String getBackStr(String s, int c) {
-  String ns;
+  String ns = "";
   for (int i = c; i < s.length(); i++) {
     ns = ns + s.charAt(i);
   }
@@ -306,6 +332,7 @@ void clrpmem() {
   }  
 }
 void mkvar(String vn, byte t, float vlng, String vstr) {
+  vn.toUpperCase();
   //Serial.println(findvar(vn, vmp + 1));
   if (findvar(vn, vmp + 1) != -1) {return;};
   if (t > 5) {t = 1;}
@@ -360,6 +387,7 @@ void mkvar(String vn, byte t, float vlng, String vstr) {
   //for (long i = vmp; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
 }
 String getvar(String vn) {
+  vn.toUpperCase();
   long vpos = findvar(vn, vmp + 1);
   if (vpos == -1) {return "";}
   byte vtype = getvart(vn);
