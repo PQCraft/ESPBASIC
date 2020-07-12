@@ -1,32 +1,39 @@
-v0.0.0.1:
-  added dummy terminal
-v0.0.0.2:
-  enhanced dummy terminal
-  added rudimentary RAM management
-v0.0.0.3:
-  retracted RAM managment routines
-v0.0.0.4:
-  used different RAM allocating technique
+v0.0.0.11:
+  added half of an expression interpreter
   improved dummy terminal
-  added more features to the dummy terminal
-v0.0.0.5:
-  added some keyboard routines
-  added software reset by CTRL+ALT+DEL
-v0.0.0.6:
-  changed some routines
-v0.0.0.7:
-  improved variable save and recall
-  added some workarounds
-v0.0.0.8:
-  working variable save and recall for strings
-  changed variable save technique
-  text at startup uses variable r/w routines
-v0.0.0.9:
-  added BASIC functionality
-  added BASIC command: EXIT
+  improved keyboard routines
+  fixed prompt home key line beginning offset
+  added BASIC command: PRINT (may also be accessed using ?)
+  added BASIC command: SYSINFO (may also be accessed using SYSINF)
 v0.0.0.10:
   improved dummy terminal
   added BASIC command: CLS
   added BASIC command: MEMORY (may also be accessed using MEM)
   replaced BASIC command EXIT with DUMMY due to future conflicts
   improved BASIC prompt
+v0.0.0.9:
+  added BASIC functionality
+  added BASIC command: EXIT
+v0.0.0.8:
+  working variable save and recall for strings
+  changed variable save technique
+  text at startup uses variable r/w routines
+v0.0.0.7:
+  improved variable save and recall
+  added some workarounds
+v0.0.0.6:
+  changed some routines
+v0.0.0.5:
+  added some keyboard routines
+  added software reset by CTRL+ALT+DEL
+v0.0.0.4:
+  used different RAM allocating technique
+  improved dummy terminal
+  added more features to the dummy terminal
+v0.0.0.3:
+  retracted RAM managment routines
+v0.0.0.2:
+  enhanced dummy terminal
+  added rudimentary RAM management
+v0.0.0.1:
+  added dummy terminal
