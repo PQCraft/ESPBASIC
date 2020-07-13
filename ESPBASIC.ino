@@ -98,7 +98,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.11");
+  mkvar("VER", 5, 0, "0.0.0.12");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -209,7 +209,7 @@ void espbasic() {
     }
     if (CMD == "PRINT" || CMD == "?") {
       if (ARG != "") {
-        printString(getval(ARG, false));
+        printString(getval(ARG));
         if (gve > 0) {
           if (gve == 1) {
             printErr(4, "");
@@ -316,7 +316,7 @@ void dummy() {
     }
   } while (true);
 }
-String getval(String in, bool ap) {
+String getval(String in) {
   gve = 0;
   gvt = 0;
   String cbfr = "";
@@ -379,7 +379,7 @@ String getval(String in, bool ap) {
               in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
               isString = true;
             } else if (getvart(cbfr) == 0) {
-              if (cbfr.charAt(cbfr.length() - 1) == '$') {
+              if (getFrontStr(cbfr, cbfr.length() - 2) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
               } else {
@@ -387,12 +387,14 @@ String getval(String in, bool ap) {
                 isNumber = true;
               }
             } else if (getvart(cbfr) == -1) {
-              if (isAlphaNumeric(cbfr.charAt(0)) && cbfr.charAt(cbfr.length() - 1) == ')') {
+              if (isAlNum(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
                 in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
                 if (isNumber == true && getfunct(cbfr) == 1) {gve = 2; return "";}
               } else if (cbfr.charAt(0) == '(' && cbfr.charAt(cbfr.length() - 1) == ')') {
                 if (getChoppedStr(cbfr, 1, 1) != "") {
-                  in = getFrontStr(in, vbp) + getval(getChoppedStr(cbfr, 1, 1), true) + getBackStr(in, vep + 1);
+                  in = getFrontStr(in, vbp) + '(' + getval(getChoppedStr(cbfr, 1, 1)) + ')' + getBackStr(in, vep + 1);
+                  if (gve > 0) {return "";}
+                  if (gvt != isString) {gve = 2; return "";}
                   if (isNumber == true && gvt == 1) {gve = 2; return "";}
                 } else {
                   if (isString) {
@@ -401,7 +403,7 @@ String getval(String in, bool ap) {
                     in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
                   }
                 }
-              } else if (cbfr.charAt(cbfr.length() - 1) == '$') {
+              } else if (isAlNum(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
               } else {
@@ -444,7 +446,7 @@ String getval(String in, bool ap) {
     return "";
   }
   in = getFrontStr(in, in.length() - 1);
-  if (ap) {in = '(' + in + ')';}
+  //if (ap) {in = '(' + in + ')';}
   //if (isNumber && in == "") {in = "0.00";}
   gvt = isString;
   out = in;
