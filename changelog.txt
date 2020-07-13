@@ -1,3 +1,5 @@
+v0.0.0.12:
+  improved syntax detection
 v0.0.0.11:
   added half of an expression interpreter
   improved dummy terminal
