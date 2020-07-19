@@ -9,6 +9,7 @@
 //#include <stdlib.h>
 #include <esp_int_wdt.h>
 #include <esp_task_wdt.h>
+#include "esp32-hal-cpu.h"
 //Preferences preferences;
 
 fabgl::VGAController      VGA;
@@ -57,6 +58,7 @@ int ltcy;
 //#define EBREV "";
 
 void setup() {
+  setCpuFrequencyMhz(240);
   Serial.begin(115200);
   PS2.begin(PS2Preset::KeyboardPort0);
   auto keyboard = PS2.keyboard();
@@ -100,7 +102,8 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.13");
+  mkvar("VER", 5, 0, "0.0.0.14");
+  mkvar("VER", 5, 0, "R.I.P.");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -132,7 +135,7 @@ void espbasic() {
       nac = false;
     }
     if (CMD == "DUMMY") {
-      exitBASIC = true;
+      dummy();
       nac = false;
     }
     if (CMD == "CLS") {
@@ -167,8 +170,8 @@ void espbasic() {
       nac = false;
     }
     /*
-      //Uncomment this section to enable the crash command
-      if (CMD == "CRASH") {
+    //Uncomment this section to enable the crash command
+    if (CMD == "CRASH") {
       sicon(3); printString("Are you sure?");
       ck:
       rfKB();
@@ -198,7 +201,7 @@ void espbasic() {
       whew:
       printChar(13);
       nac = false;
-      }
+    }
     */
     /*
     //Uncomment this section to enable the C64 theme command
@@ -208,9 +211,69 @@ void espbasic() {
       setFGColor(fgc);
       setBGColor(bgc);
       rfScrTxt();
-      nac = 0;
+      nac = false;
     }
     */
+    /*
+    //Uncomment this section to enable the C128 theme command
+    if (CMD == "THEME128") {
+      fgc = 46;
+      bgc = 21;
+      setFGColor(fgc);
+      setBGColor(bgc);
+      rfScrTxt();
+      nac = false;
+    }
+    */
+    /*
+    //Uncomment this section to enable the default theme command
+    if (CMD == "THEMEDF") {
+      fgc = 60;
+      bgc = 1;
+      setFGColor(fgc);
+      setBGColor(bgc);
+      rfScrTxt();
+      nac = false;
+    }
+    */
+    /*
+    //Uncomment this section to enable the b&w theme command
+    if (CMD == "THEMEBW") {
+      fgc = 42;
+      bgc = 0;
+      setFGColor(fgc);
+      setBGColor(bgc);
+      rfScrTxt();
+      nac = false;
+    }
+    */
+    /*
+    //Uncomment this section to enable the b&w bright theme command
+    if (CMD == "THEMEBWB") {
+      fgc = 63;
+      bgc = 0;
+      setFGColor(fgc);
+      setBGColor(bgc);
+      rfScrTxt();
+      nac = false;
+    }
+    */
+    if (CMD == "CPU40") {
+      setCpuFrequencyMhz(40);
+      nac = false;
+    }
+    if (CMD == "CPU80") {
+      setCpuFrequencyMhz(80);
+      nac = false;
+    }
+    if (CMD == "CPU160") {
+      setCpuFrequencyMhz(160);
+      nac = false;
+    }
+    if (CMD == "CPU240") {
+      setCpuFrequencyMhz(240);
+      nac = false;
+    }
     if (nac) {
       printErr(3, CMD);
     }
@@ -218,13 +281,16 @@ void espbasic() {
       line[i] = 0;
     }
   } while (!exitBASIC);
-  dummy();
+  do {} while (true);
 }
 void dummy() {
   tcm = 1;
   do {
     drawCursor(tcx, tcy);
     rfKB();
+    if (chr == 27) {
+      return;
+    }
     if (chr == 137) {
       fgc++;
       setFGColor(fgc);
@@ -327,7 +393,6 @@ void prompt(String pt) {
         ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
       }
     }
-    //if (chr != 0) {Serial.println("---"); Serial.println(tcx); Serial.println(tcy); Serial.println(lp); Serial.println(noc);}
   } while (chr != 13);
 }
 String getval(String in) {
@@ -392,7 +457,7 @@ String getval(String in) {
               in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
               isString = true;
             } else if (getvart(cbfr) == 0) {
-              if (isValChar(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
+              if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
               } else {
@@ -400,7 +465,7 @@ String getval(String in) {
                 isNumber = true;
               }
             } else if (getvart(cbfr) == -1) {
-              if (isValChar(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
+              if (isValVS(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
                 in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
                 if (isNumber == true && getfunct(cbfr) == 1) {
                   gve = 2;
@@ -427,7 +492,7 @@ String getval(String in) {
                     in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
                   }
                 }
-              } else if (isValChar(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
+              } else if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
               } else {
@@ -443,7 +508,7 @@ String getval(String in) {
           } else {
             isNumber = true;
           }
-svd:
+          svd:
           cbfr = "";
         } else {
           gve = 1;
@@ -565,13 +630,13 @@ void clrpmem() {
 }
 bool mkvar(String vn, byte t, float vlng, String vstr) {
   vn.toUpperCase();
-  if (!isValChar(vn)) {
+  if (!isValVS(vn)) {
     return false;
   }
   //Serial.println(findvar(vn, vmp + 1));
-  if (findvar(vn, vmp + 1) != -1) {
+  if (findvar(vn, vmp) != -1) {
     return false;
-  };
+  }
   if (t > 5) {
     t = 1;
   }
@@ -605,7 +670,7 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
   char chold;
   pmp = vmp - vsize;
   vmp = pmp;
-  for (long i = findCharRevPM(255, pms - 1); i < pms; i++) {
+  for (long i = vmp; i < pms; i++) {
     srchofst = 0;
     do {
       chold = pmem[i] + srchofst;
@@ -671,7 +736,7 @@ void delvar(String vn) {
 }
 int getvart(String vn) {
   vn.toUpperCase();
-  if (!isValChar(vn)) {
+  if (!isValVS(vn)) {
     return -1;
   }
   long vpos = findvar(vn, vmp + 1);
@@ -680,7 +745,8 @@ int getvart(String vn) {
   }
   return pmem[vpos + vn.length() + 3];
 }
-bool isValChar(String str) {
+bool isValVS(String str) {
+  if (str.length() == 0) {return false;}
   int anc = 0;
   for (int i = 0 ; i < str.length(); i++) {
     if (isAlphaNumeric(str.charAt(i)) || str.charAt(i) == '_') {
