@@ -98,7 +98,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.12");
+  mkvar("VER", 5, 0, "0.0.0.13");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -337,15 +337,6 @@ String getval(String in) {
     gve = 1;
     return "";
   }
-  for (int i = 0; i < in.length(); i++) {
-    char cchr = in.charAt(i);
-    if (cchr == '"') {
-      inString = !inString;
-    }
-    if (cchr == ' ' && !inString) {
-      in = getFrontStr(in, i) + getBackStr(in, i + 1); i--;
-    }
-  }
   inString = false;
   in += '+';
   bool svsp = false;
@@ -357,6 +348,12 @@ String getval(String in) {
   bool inPrnth = false;
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
+    do {
+      if (cchr == ' ' && !inString) {
+        in = getFrontStr(in, i) + getBackStr(in, i + 1);
+        cchr = in.charAt(i);
+      }
+    } while (cchr == ' ' && !inString);
     bool jcis = false;
     bool jcip = false;
     if (cchr == '"' && !inString) {
@@ -830,6 +827,7 @@ void printChar(char c) {
   //Serial.println(c);
   //Serial.println(tcx);
   //Serial.println(tcy);
+  bool isBS = false;
   if (c == 13 || c == 10) {
     GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
     tcy++;
@@ -839,9 +837,8 @@ void printChar(char c) {
   if (c == 8) {
     GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
     tcx--;
-    setbfrc(tcx, tcy, 0);
-    GFX.drawChar(tcx * 8, tcy * 8, 32);
     c = 0;
+    isBS = true;
   }
   if (c == 127) {
     GFX.drawChar(tcx * 8, tcy * 8, 32);
@@ -895,6 +892,10 @@ void printChar(char c) {
     tbp++;
     cbfrcln();
     sc++;
+  }
+  if (isBS) {
+    setbfrc(tcx, tcy, 0);
+    GFX.drawChar(tcx * 8, tcy * 8, 32);
   }
 }
 void printString(String s) {
