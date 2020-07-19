@@ -51,6 +51,8 @@ bool          noscroll = false;
 byte          sc;
 byte          gve = 0;
 byte          gvt = 0;
+int ltcx;
+int ltcy;
 //#define EBVER "0.0.0.0";
 //#define EBREV "";
 
@@ -71,8 +73,8 @@ void setup() {
   /*do {
     drawCursor(0, 0);
     delay(5);
-  } while (timer() < 1950);
-  resetTimer(0);*/
+    } while (timer() < 1950);
+    resetTimer(0);*/
 }
 void loop() {
   espbasic();
@@ -105,84 +107,14 @@ void espbasic() {
   //printString(getvar("E"));
   printString(String(pms, DEC) + F(" bytes total.\n"));
   printString(String(getFreePM(), DEC) + F(" bytes free.\n"));
-  int lp = 0;
-  int ttcx;
-  int ttcy;
-  int ltcx;
-  int ltcy;
   bool exitBASIC = false;
   String lineString;
   String CMD;
   String ARG;
   bool nac = true;
-  int noc = 0;
   tcm = 1;
   do {
-    printChar('>'); ltcx = tcx; ltcy = tcy; lp = 0; noc = 0; sc = 0;
-    do {
-      rfKB();
-      drawCursor(tcx, tcy);
-      if (chr == 8 && lp > 0) {
-        noc--;
-        lp--;
-        for (int i = lp; i < 2047; i++) {
-          line[i] = line[i + 1];
-        }; line[2047] = 0;
-        printChar(8);
-        ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;
-        printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
-      }
-      if (chr == 127) {
-        if (noc - lp > 0) {
-          noc--;
-          for (int i = lp; i < 2047; i++) {
-            line[i] = line[i + 1];
-          }; line[2047] = 0;
-          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;
-          printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
-        }
-      }
-      if (lp < noc && chr == 131) {
-        GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
-        tcx++;
-        lp++;
-        printChar(0);
-      }
-      if (lp > 0 && chr == 130) {
-        GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
-        tcx--;
-        lp--;
-        printChar(0);
-      }
-      if (chr == 145) {
-        GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); ltcy = ltcy - sc; sc = 0;
-        tcx = ltcx;
-        tcy = ltcy;
-        lp = 0;
-      }
-      if (chr == 146) {
-        GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); ltcy = ltcy - sc; sc = 0;
-        tcx = ltcx; tcy = ltcy; printString(line); ltcy = ltcy - sc; sc = 0; lp = noc;
-      }
-      if (chr > 31 && chr < 127 && lp < 2048) {
-        ltcy = ltcy - sc; sc = 0;
-        if (tcm) {
-          line[lp] = chr;
-          printChar(chr);
-          if (lp == noc) {
-            noc++;
-          } lp++;
-        } else {
-          noc++;
-          for (int i = 2047; i > lp; i--) {
-            line[i] = line[i - 1];
-          }; line[lp] = chr;
-          ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy - sc;
-          ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
-        }
-      }
-      //if (chr != 0) {Serial.println("---"); Serial.println(tcx); Serial.println(tcy); Serial.println(lp); Serial.println(noc);}
-    } while (chr != 13);
+    prompt(">");
     tcx = ltcx; tcy = ltcy; printString(line);
     printChar(13);
     lineString = line; lineString.trim();
@@ -233,7 +165,7 @@ void espbasic() {
     if (CMD == "SYSINFO" || CMD == "SYSINF") {
       printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
-    } 
+    }
     /*
       //Uncomment this section to enable the crash command
       if (CMD == "CRASH") {
@@ -266,6 +198,17 @@ void espbasic() {
       whew:
       printChar(13);
       nac = false;
+      }
+    */
+    /*
+    //Uncomment this section to enable the C64 theme command
+    if (CMD == "THEME64") {
+      fgc = 43;
+      bgc = 18;
+      setFGColor(fgc);
+      setBGColor(bgc);
+      rfScrTxt();
+      nac = 0;
     }
     */
     if (nac) {
@@ -315,6 +258,77 @@ void dummy() {
       printChar(chr);
     }
   } while (true);
+}
+void prompt(String pt) {
+  int lp = 0;
+  int ttcx;
+  int ttcy;
+  int noc = 0;
+  printString(pt); ltcx = tcx; ltcy = tcy; lp = 0; noc = 0; sc = 0;
+  do {
+    rfKB();
+    drawCursor(tcx, tcy);
+    if (chr == 8 && lp > 0) {
+      noc--;
+      lp--;
+      for (int i = lp; i < 2047; i++) {
+        line[i] = line[i + 1];
+      }; line[2047] = 0;
+      printChar(8);
+      ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;
+      printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
+    }
+    if (chr == 127) {
+      if (noc - lp > 0) {
+        noc--;
+        for (int i = lp; i < 2047; i++) {
+          line[i] = line[i + 1];
+        }; line[2047] = 0;
+        ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; noscroll = true;
+        printString(line); printChar(32); tcx = ttcx; tcy = ttcy; noscroll = false;
+      }
+    }
+    if (lp < noc && chr == 131) {
+      GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
+      tcx++;
+      lp++;
+      printChar(0);
+    }
+    if (lp > 0 && chr == 130) {
+      GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy));
+      tcx--;
+      lp--;
+      printChar(0);
+    }
+    if (chr == 145) {
+      GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); ltcy = ltcy - sc; sc = 0;
+      tcx = ltcx;
+      tcy = ltcy;
+      lp = 0;
+    }
+    if (chr == 146) {
+      GFX.drawChar(tcx * 8, tcy * 8, getbfrc(tcx, tcy)); ltcy = ltcy - sc; sc = 0;
+      tcx = ltcx; tcy = ltcy; printString(line); ltcy = ltcy - sc; sc = 0; lp = noc;
+    }
+    if (chr > 31 && chr < 127 && lp < 2048) {
+      ltcy = ltcy - sc; sc = 0;
+      if (tcm) {
+        line[lp] = chr;
+        printChar(chr);
+        if (lp == noc) {
+          noc++;
+        } lp++;
+      } else {
+        noc++;
+        for (int i = 2047; i > lp; i--) {
+          line[i] = line[i - 1];
+        }; line[lp] = chr;
+        ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy - sc;
+        ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
+      }
+    }
+    //if (chr != 0) {Serial.println("---"); Serial.println(tcx); Serial.println(tcy); Serial.println(lp); Serial.println(noc);}
+  } while (chr != 13);
 }
 String getval(String in) {
   gve = 0;
@@ -367,8 +381,10 @@ String getval(String in) {
     }
     if (true/*!inString*/) {
       if (isOp(cchr) && !inString && !inPrnth) {
-      Serial.println(cbfr);
-        if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {goto svd;}
+        Serial.println(cbfr);
+        if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {
+          goto svd;
+        }
         if (cbfr != "") {
           osl = in.length();
           if (!isNum(cbfr)) {
@@ -376,7 +392,7 @@ String getval(String in) {
               in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
               isString = true;
             } else if (getvart(cbfr) == 0) {
-              if (getFrontStr(cbfr, cbfr.length() - 2) && cbfr.charAt(cbfr.length() - 1) == '$') {
+              if (isValChar(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
               } else {
@@ -384,15 +400,26 @@ String getval(String in) {
                 isNumber = true;
               }
             } else if (getvart(cbfr) == -1) {
-              if (isAlNum(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
+              if (isValChar(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
                 in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
-                if (isNumber == true && getfunct(cbfr) == 1) {gve = 2; return "";}
+                if (isNumber == true && getfunct(cbfr) == 1) {
+                  gve = 2;
+                  return "";
+                }
               } else if (cbfr.charAt(0) == '(' && cbfr.charAt(cbfr.length() - 1) == ')') {
                 if (getChoppedStr(cbfr, 1, 1) != "") {
-                  in = getFrontStr(in, vbp) + '(' + getval(getChoppedStr(cbfr, 1, 1)) + ')' + getBackStr(in, vep + 1);
-                  if (gve > 0) {return "";}
-                  if (gvt != isString) {gve = 2; return "";}
-                  if (isNumber == true && gvt == 1) {gve = 2; return "";}
+                  in = getFrontStr(in, vbp) + getval(getChoppedStr(cbfr, 1, 1)) + getBackStr(in, vep + 1);
+                  if (gve > 0) {
+                    return "";
+                  }
+                  if (gvt != isString) {
+                    gve = 2;
+                    return "";
+                  }
+                  if (isNumber == true && gvt == 1) {
+                    gve = 2;
+                    return "";
+                  }
                 } else {
                   if (isString) {
                     in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
@@ -400,7 +427,7 @@ String getval(String in) {
                     in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
                   }
                 }
-              } else if (isAlNum(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
+              } else if (isValChar(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
                 isString = true;
               } else {
@@ -416,7 +443,7 @@ String getval(String in) {
           } else {
             isNumber = true;
           }
-          svd:
+svd:
           cbfr = "";
         } else {
           gve = 1;
@@ -436,8 +463,13 @@ String getval(String in) {
       inPrnth = false;
     }
   }
-  if (inString || inPrnth) {gve = 1; return "";}
-  if (!isString && !isNumber) {isNumber = true;}
+  if (inString || inPrnth) {
+    gve = 1;
+    return "";
+  }
+  if (!isString && !isNumber) {
+    isNumber = true;
+  }
   if (isString && isNumber) {
     gve = 2;
     return "";
@@ -533,7 +565,7 @@ void clrpmem() {
 }
 bool mkvar(String vn, byte t, float vlng, String vstr) {
   vn.toUpperCase();
-  if (!isAlNum(vn)) {
+  if (!isValChar(vn)) {
     return false;
   }
   //Serial.println(findvar(vn, vmp + 1));
@@ -639,7 +671,7 @@ void delvar(String vn) {
 }
 int getvart(String vn) {
   vn.toUpperCase();
-  if (!isAlNum(vn)) {
+  if (!isValChar(vn)) {
     return -1;
   }
   long vpos = findvar(vn, vmp + 1);
@@ -648,10 +680,10 @@ int getvart(String vn) {
   }
   return pmem[vpos + vn.length() + 3];
 }
-boolean isAlNum(String str) {
+bool isValChar(String str) {
   int anc = 0;
   for (int i = 0 ; i < str.length(); i++) {
-    if (isAlphaNumeric(str.charAt(i))) {
+    if (isAlphaNumeric(str.charAt(i)) || str.charAt(i) == '_') {
       anc++;
     }
   }
