@@ -1,3 +1,5 @@
+v0.0.0.13:
+  fixed bugs in dummy terminal
 v0.0.0.12:
   improved syntax detection
 v0.0.0.11:
