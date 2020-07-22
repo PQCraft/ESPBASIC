@@ -16,13 +16,12 @@ fabgl::VGAController      VGA;
 fabgl::PS2Controller      PS2;
 fabgl::Canvas       GFX(&VGA);
 SoundGenerator            SND;
-/*SquareWaveformGenerator   SQ0;
-  SquareWaveformGenerator   SQ1;
-  TriangleWaveformGenerator TR0;
-  TriangleWaveformGenerator TR1;
-  SawtoothWaveformGenerator ST0;
-  SineWaveformGenerator     SW0;
-  NoiseWaveformGenerator    WN0;*/
+SquareWaveformGenerator   SQW[4];
+TriangleWaveformGenerator TRI[4];
+SawtoothWaveformGenerator SWT[4];
+SineWaveformGenerator     SNW[4];
+NoiseWaveformGenerator    NWV[4];
+unsigned long            nDur[4];
 
 unsigned long tsv;
 //byte          vm;
@@ -52,6 +51,8 @@ bool          noscroll = false;
 byte          sc;
 byte          gve = 0;
 byte          gvt = 0;
+byte          gfe = 0;
+byte          gft = 0;
 int ltcx;
 int ltcy;
 //#define EBVER "0.0.0.0";
@@ -61,7 +62,7 @@ void setup() {
   setCpuFrequencyMhz(240);
   Serial.begin(115200);
   PS2.begin(PS2Preset::KeyboardPort0);
-  auto keyboard = PS2.keyboard();
+  auto KB0 = PS2.keyboard();
   VGA.begin();
   VGA.setResolution(QVGA_320x240_60Hz);
   GFX.selectFont(&fabgl::FONT_8x8);
@@ -72,11 +73,81 @@ void setup() {
   //vMode(1);
   cls();
   tcm = 1;
-  /*do {
-    drawCursor(0, 0);
-    delay(5);
-    } while (timer() < 1950);
-    resetTimer(0);*/
+  //WaveformGenerator.enable(true);
+  for (byte i = 0; i < 4; i++) {
+    /*WaveformGenerator * &SQW[i] = nullptr;
+      WaveformGenerator * &TRI[i] = nullptr;
+      WaveformGenerator * &SWT[i] = nullptr;
+      WaveformGenerator * &SNW[i] = nullptr;
+      WaveformGenerator * &NWV[i] = nullptr;*/
+    SND.attach(&SQW[i]);
+    SND.attach(&TRI[i]);
+    SND.attach(&SWT[i]);
+    SND.attach(&SNW[i]);
+    SND.attach(&NWV[i]);
+  }
+  SND.play(true);
+  //  for (byte i = 0; i < 4; i++) {
+  //    SQW[i].enable
+  //  }
+  //KB0->setLEDs(1, 0, 0);
+  do {
+    rfKB();
+    if (chr == 132) {
+      SND_setCHType(0, 0);
+      SND_setCHType(1, 0);
+      SND_setCHType(2, 0);
+      SND_setCHType(3, 0);
+      goto pbt;
+    }
+    if (chr == 133) {
+      SND_setCHType(0, 1);
+      SND_setCHType(1, 1);
+      SND_setCHType(2, 1);
+      SND_setCHType(3, 1);
+      goto pbt;
+    }
+    if (chr == 134) {
+      SND_setCHType(0, 2);
+      SND_setCHType(1, 2);
+      SND_setCHType(2, 2);
+      SND_setCHType(3, 2);
+      goto pbt;
+    }
+    if (chr == 135) {
+      SND_setCHType(0, 3);
+      SND_setCHType(1, 3);
+      SND_setCHType(2, 3);
+      SND_setCHType(3, 3);
+      goto pbt;
+    }
+    if (chr == 136) {
+      SND_setCHType(0, 4);
+      SND_setCHType(1, 4);
+      SND_setCHType(2, 4);
+      SND_setCHType(3, 4);
+      goto pbt;
+    }
+  } while (timer() < 1500);
+  goto cwb;
+pbt:
+  SND_playNote(0, 349.23, 0);
+  delay(250);
+  SND_playNote(1, 523.25, 745);
+  delay(250);
+  SND_playNote(2, 698.46, 745);
+  delay(250);
+  rfSND();
+  delay(250);
+  rfSND();
+  delay(250);
+  rfSND();
+cwb:
+  SND_setCHType(0, 0);
+  SND_setCHType(1, 0);
+  SND_setCHType(2, 0);
+  SND_setCHType(3, 0);
+  resetTimer(0);
 }
 void loop() {
   espbasic();
@@ -144,21 +215,27 @@ void espbasic() {
     }
     if (CMD == "PRINT" || CMD == "?") {
       if (ARG != "") {
-        printString(getval(ARG));
-        if (gve > 0) {
-          if (gve == 1) {
-            printErr(4, "");
-          } else if (gve == 2) {
-            printErr(5, "");
-          } else if (gve == 3) {
-            printErr(7, "");
+        bool dpnlc = true;
+        dpnlc = (ARG.charAt(ARG.length() - 1) == ';');
+        if (dpnlc) {
+          ARG = getFrontStr(ARG, ARG.length() - 1);
+          if (ARG.length() == 0) {
+            goto aib;
           }
+        }
+        String printStr = getval(ARG);
+        if (gve > 0) {
+          pgve(printStr);
         } else {
-          printChar(13);
+          printString(printStr);
+          if (!dpnlc) {
+            printChar(13);
+          }
         }
       } else {
         printChar(13);
       }
+aib:
       nac = false;
     }
     if (CMD == "MEMORY" || CMD == "MEM") {
@@ -169,95 +246,27 @@ void espbasic() {
       printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
     }
-    ///*
-    //Uncomment this section to enable the crash command
-    if (CMD == "CRASH") {
-      sicon(3); printString("Are you sure?");
-      ck:
-      rfKB();
-      drawCursor(tcx, tcy);
-      if (chr == 'y' || chr == 'Y') {
-        goto oof;
-      } else if (chr != 0) {
-        goto whew;
+    if (CMD == "SNDTEST") {
+      unsigned long stdelay = timer() + 5000;
+      printString("Testing sound...\n");
+      SND_setCHType(0, 0);
+      SND_setCHType(1, 1);
+      SND_setCHType(2, 2);
+      SND_setCHType(3, 3);
+      for (byte i = 0; i < 4; i++) {
+        for (int j = 160; j <= 1600; j++) {
+          SND_playNote(i, j, 0);
+          delay(5);
+          //SQW[0].setFrequency(j);
+        }
+        delay(5);
+        rfSND();
       }
-      goto ck;
-      oof:
-      randomSeed(timer());
-      long rip;
-      do {
-        rip = random(-98304, 165940);
-        rfKB();
-        drawCursor(tcx, tcy);
-        pmem[rip] = random(0, 256 * chr);
-        tbfr[random(-16, 65)][random(-4, 41)] = random(0, 256);
-        GFX.setPenColor(random(0, 256), random(0, 256), random(0, 256));
-        GFX.setBrushColor(random(0, 256), random(0, 256), random(0, 256));
-        GFX.drawChar(random(-16384, 16384), random(-16384, 16384), random(0, 256));
-        setFGColor(fgc);
-        setBGColor(bgc);
-        rfScrTxt();
-      } while (true);
-      whew:
-      printChar(13);
       nac = false;
     }
-    //*/
-    ///*
-    //Uncomment this section to enable the C64 theme command
-    if (CMD == "THEME64") {
-      fgc = 43;
-      bgc = 18;
-      setFGColor(fgc);
-      setBGColor(bgc);
-      rfScrTxt();
-      nac = false;
-    }
-    //*/
-    ///*
-    //Uncomment this section to enable the C128 theme command
-    if (CMD == "THEME128") {
-      fgc = 46;
-      bgc = 21;
-      setFGColor(fgc);
-      setBGColor(bgc);
-      rfScrTxt();
-      nac = false;
-    }
-    //*/
-    ///*
-    //Uncomment this section to enable the default theme command
-    if (CMD == "THEMEDF") {
-      fgc = 60;
-      bgc = 1;
-      setFGColor(fgc);
-      setBGColor(bgc);
-      rfScrTxt();
-      nac = false;
-    }
-    //*/
-    ///*
-    //Uncomment this section to enable the b&w theme command
-    if (CMD == "THEMEBW") {
-      fgc = 42;
-      bgc = 0;
-      setFGColor(fgc);
-      setBGColor(bgc);
-      rfScrTxt();
-      nac = false;
-    }
-    //*/
-    ///*
-    //Uncomment this section to enable the b&w bright theme command
-    if (CMD == "THEMEBWB") {
-      fgc = 63;
-      bgc = 0;
-      setFGColor(fgc);
-      setBGColor(bgc);
-      rfScrTxt();
-      nac = false;
-    }
-    //*/
+    // Comment the next line to omit the extra commands.
+#include "funCMDs/funCMDs.h";
+    //     ^^^^^^^^^^^^^
     if (CMD == "CPU40") {
       setCpuFrequencyMhz(40);
       nac = false;
@@ -324,6 +333,89 @@ void dummy() {
       printChar(chr);
     }
   } while (true);
+}
+void pgve(String edat) {
+  if (gve == 1) {
+    printErr(5, "");
+  } else if (gve == 2) {
+    printErr(6, "");
+  } else if (gve == 3) {
+    printErr(8, "");
+  } else if (gve == 4) {
+    printErr(4, edat);
+  }
+}
+void SND_setVol(byte ch, byte nv) {
+  SQW[ch].setVolume(nv);
+  TRI[ch].setVolume(nv);
+  SWT[ch].setVolume(nv);
+  SNW[ch].setVolume(nv);
+  NWV[ch].setVolume(nv);
+}
+void SND_playNote(byte ch, int nf, int nd) {
+  SQW[ch].setFrequency(nf);
+  TRI[ch].setFrequency(nf);
+  SWT[ch].setFrequency(nf);
+  SNW[ch].setFrequency(nf);
+  NWV[ch].setFrequency(nf);
+  nDur[ch] = nd + timer();
+}
+void SND_setCHType(byte ch, byte nt) {
+  switch (nt) {
+    case 0:
+      SQW[ch].enable(true);
+      TRI[ch].enable(false);
+      SWT[ch].enable(false);
+      SNW[ch].enable(false);
+      NWV[ch].enable(false);
+      break;
+    case 1:
+      TRI[ch].enable(true);
+      SWT[ch].enable(false);
+      SNW[ch].enable(false);
+      NWV[ch].enable(false);
+      SQW[ch].enable(false);
+      break;
+    case 2:
+      SWT[ch].enable(true);
+      SNW[ch].enable(false);
+      NWV[ch].enable(false);
+      SQW[ch].enable(false);
+      TRI[ch].enable(false);
+      break;
+    case 3:
+      SNW[ch].enable(true);
+      NWV[ch].enable(false);
+      SQW[ch].enable(false);
+      TRI[ch].enable(false);
+      SWT[ch].enable(false);
+      break;
+    case 4:
+      NWV[ch].enable(true);
+      SQW[ch].enable(false);
+      TRI[ch].enable(false);
+      SWT[ch].enable(false);
+      SNW[ch].enable(false);
+      break;
+  }
+}
+void rfSND() {
+  for (int i = 0; i < 4; i++) {
+    //Serial.println("nDur["+String(i, DEC)+"]: "+String(nDur[i], DEC)+", timer(): "+String(timer(), DEC));
+    if (timer() > nDur[i]) {
+      /*
+        SQW[i].enable(false);
+        TRI[i].enable(false);
+        SWT[i].enable(false);
+        SNW[i].enable(false);
+        NWV[i].enable(false);*/
+      SQW[i].setFrequency(0);
+      TRI[i].setFrequency(0);
+      SWT[i].setFrequency(0);
+      SNW[i].setFrequency(0);
+      NWV[i].setFrequency(0);
+    }
+  }
 }
 void prompt(String pt) {
   int lp = 0;
@@ -446,7 +538,7 @@ String getval(String in) {
     }
     if (true/*!inString*/) {
       if (isOp(cchr) && !inString && !inPrnth) {
-        Serial.println(cbfr);
+        //Serial.println(cbfr);
         if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {
           goto svd;
         }
@@ -467,7 +559,11 @@ String getval(String in) {
             } else if (getvart(cbfr) == -1) {
               if (isValVS(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
                 in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
-                if (isNumber == true && getfunct(cbfr) == 1) {
+                if (gfe != 0) {
+                  gve = 4;
+                  return getFrontStr(cbfr, cbfr.indexOf('('));
+                }
+                if (isNumber == true && gft == 1) {
                   gve = 2;
                   return "";
                 }
@@ -488,9 +584,9 @@ String getval(String in) {
                 } else {
                   /*if (isString) {
                     in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
-                  } else {
+                    } else {
                     in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
-                  }*/
+                    }*/
                   gve = 1;
                   return "";
                 }
@@ -510,7 +606,7 @@ String getval(String in) {
           } else {
             isNumber = true;
           }
-          svd:
+svd:
           cbfr = "";
         } else {
           gve = 1;
@@ -541,6 +637,11 @@ String getval(String in) {
     gve = 2;
     return "";
   }
+  if (isString) {
+    
+  } else {
+    
+  }
   in = getFrontStr(in, in.length() - 1);
   //if (ap) {in = '(' + in + ')';}
   //if (isNumber && in == "") {in = "0.00";}
@@ -548,12 +649,17 @@ String getval(String in) {
   out = in;
   return out;
 }
-String getfunc(String str) {
-  return "0.00";
+String getfunc(String fstr) {
+  String FUNC = getFrontStr(fstr, fstr.indexOf('('));
+  String FARG = getMidStr(fstr, fstr.indexOf('('), fstr.lastIndexOf(')'));
+  FUNC.toUpperCase();
+  Serial.println(FUNC);
+  gfe = 1;
+  return "";
 }
-bool getfunct(String str) {
+/*bool getfunct(String str) {
   return false;
-}
+  }*/
 bool isOp(char tc) {
   String ops = "+-*/^";
   return (ops.indexOf(tc) > -1);
@@ -581,9 +687,9 @@ bool isNum(String str) {
   }
   return true;
 }
-String runFunc(String f, String a) {
+/*String runFunc(String f, String a) {
   return "";
-}
+  }*/
 String getChoppedStr(String s, int c1, int c2) {
   String ns = "";
   for (int i = c1; i < s.length() - c2; i++) {
@@ -748,10 +854,15 @@ int getvart(String vn) {
   return pmem[vpos + vn.length() + 3];
 }
 bool isValVS(String str) {
-  if (str.length() == 0) {return false;}
+  if (str.length() == 0) {
+    return false;
+  }
   int anc = 0;
   for (int i = 0 ; i < str.length(); i++) {
     if (isAlphaNumeric(str.charAt(i)) || str.charAt(i) == '_') {
+      anc++;
+    }
+    if (i == str.length() - 1 && str.charAt(i) == '$') {
       anc++;
     }
   }
@@ -1005,58 +1116,40 @@ void printString(String s) {
   }
 }
 void printErr(byte e, String etxt) {
-  sicon(0); if (e > 7 || e < 0) {
+  sicon(0); if (e > 8 || e < 0) {
     e = 0;
   }
   switch (e) {
     case 0:
       printString(F("UNKNOWN ERROR"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
       break;
     case 1:
       printString(F("FATAL SYSTEM ERROR"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
       break;
     case 2:
       printString(F("SYSTEM ERROR"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
       break;
     case 3:
       printString(F("NOT A COMMAND"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
       break;
     case 4:
-      printString(F("SYNTAX ERROR"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
+      printString(F("NOT A FUNCTION"));
       break;
     case 5:
-      printString(F("TYPE MISMATCH"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
+      printString(F("SYNTAX ERROR"));
       break;
     case 6:
-      printString(F("OUT OF MEMORY"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
+      printString(F("TYPE MISMATCH"));
       break;
     case 7:
-      printString(F("INVALID VARIABLE NAME"));
-      if (etxt != "") {
-        printString(": " + etxt);
-      }
+      printString(F("OUT OF MEMORY"));
       break;
+    case 8:
+      printString(F("INVALID VARIABLE NAME"));
+      break;
+  }
+  if (etxt != "") {
+    printString(": " + etxt);
   }
   printChar(13);
 }
@@ -1066,24 +1159,24 @@ void locate(int x, int y) {
 }
 void rfKB() {
   chr = 0;
-  auto keyboard = PS2.keyboard();
-  if (keyboard->virtualKeyAvailable()) {
+  auto KB0 = PS2.keyboard();
+  if (KB0->virtualKeyAvailable()) {
     //if (Serial.peek() > -1) { printChar(Serial.read()); }
     bool down;
-    auto inkey = keyboard->getNextVirtualKey(&down);
+    auto inkey = KB0->getNextVirtualKey(&down);
     if (down) {
-      chr = keyboard->virtualKeyToASCII(inkey);
+      chr = KB0->virtualKeyToASCII(inkey);
     }
     ctlkey = false;
     altkey = false;
     sftkey = false;
-    if (keyboard->isVKDown(fabgl::VK_LCTRL) || keyboard->isVKDown(fabgl::VK_RCTRL)) {
+    if (KB0->isVKDown(fabgl::VK_LCTRL) || KB0->isVKDown(fabgl::VK_RCTRL)) {
       ctlkey = true;
     }
-    if (keyboard->isVKDown(fabgl::VK_LALT) || keyboard->isVKDown(fabgl::VK_RALT)) {
+    if (KB0->isVKDown(fabgl::VK_LALT) || KB0->isVKDown(fabgl::VK_RALT)) {
       altkey = true;
     }
-    if (keyboard->isVKDown(fabgl::VK_LSHIFT) || keyboard->isVKDown(fabgl::VK_RSHIFT)) {
+    if (KB0->isVKDown(fabgl::VK_LSHIFT) || KB0->isVKDown(fabgl::VK_RSHIFT)) {
       sftkey = true;
     }
     if (ctlkey && altkey && chr == 127) {
@@ -1162,7 +1255,6 @@ void rfKB() {
         case 96:
           chr = 126;
           break;
-
       }
     }
     if (chr < 0 && down) {
