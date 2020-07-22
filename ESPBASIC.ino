@@ -638,15 +638,30 @@ svd:
     return "";
   }
   if (isString) {
-    
+    inString = false;
+    bool jcis = false;
+    for (int i = 0; i < in.length(); i++) {
+      cchr = in.charAt(i);
+      jcis = false;
+      if (cchr == '"' && inString) {
+        inString = false;
+        jcis = true;
+      }
+      if (inString) {
+        out += cchr;
+      }
+      if (cchr == '"' && !inString && !jcis) {
+        inString = true;
+      }
+    }
   } else {
-    
+
   }
   in = getFrontStr(in, in.length() - 1);
   //if (ap) {in = '(' + in + ')';}
   //if (isNumber && in == "") {in = "0.00";}
   gvt = isString;
-  out = in;
+  //out = in;
   return out;
 }
 String getfunc(String fstr) {
