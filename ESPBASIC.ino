@@ -169,7 +169,7 @@ void espbasic() {
       printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
     }
-    /*
+    ///*
     //Uncomment this section to enable the crash command
     if (CMD == "CRASH") {
       sicon(3); printString("Are you sure?");
@@ -202,8 +202,8 @@ void espbasic() {
       printChar(13);
       nac = false;
     }
-    */
-    /*
+    //*/
+    ///*
     //Uncomment this section to enable the C64 theme command
     if (CMD == "THEME64") {
       fgc = 43;
@@ -213,8 +213,8 @@ void espbasic() {
       rfScrTxt();
       nac = false;
     }
-    */
-    /*
+    //*/
+    ///*
     //Uncomment this section to enable the C128 theme command
     if (CMD == "THEME128") {
       fgc = 46;
@@ -224,8 +224,8 @@ void espbasic() {
       rfScrTxt();
       nac = false;
     }
-    */
-    /*
+    //*/
+    ///*
     //Uncomment this section to enable the default theme command
     if (CMD == "THEMEDF") {
       fgc = 60;
@@ -235,8 +235,8 @@ void espbasic() {
       rfScrTxt();
       nac = false;
     }
-    */
-    /*
+    //*/
+    ///*
     //Uncomment this section to enable the b&w theme command
     if (CMD == "THEMEBW") {
       fgc = 42;
@@ -246,8 +246,8 @@ void espbasic() {
       rfScrTxt();
       nac = false;
     }
-    */
-    /*
+    //*/
+    ///*
     //Uncomment this section to enable the b&w bright theme command
     if (CMD == "THEMEBWB") {
       fgc = 63;
@@ -257,7 +257,7 @@ void espbasic() {
       rfScrTxt();
       nac = false;
     }
-    */
+    //*/
     if (CMD == "CPU40") {
       setCpuFrequencyMhz(40);
       nac = false;
@@ -440,7 +440,7 @@ String getval(String in) {
       jcis = true;
       isString = true;
     }
-    if (cchr == '(' && !inString) {
+    if (cchr == '(' && !inString && cbfr == "") {
       inPrnth = true;
       jcip = true;
     }
@@ -477,7 +477,7 @@ String getval(String in) {
                   if (gve > 0) {
                     return "";
                   }
-                  if (gvt != isString) {
+                  if (gvt == 1 && isNumber) {
                     gve = 2;
                     return "";
                   }
@@ -486,11 +486,13 @@ String getval(String in) {
                     return "";
                   }
                 } else {
-                  if (isString) {
+                  /*if (isString) {
                     in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
                   } else {
                     in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
-                  }
+                  }*/
+                  gve = 1;
+                  return "";
                 }
               } else if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
                 in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
@@ -524,7 +526,7 @@ String getval(String in) {
     if (cchr == '"' && inString && !jcis) {
       inString = false;
     }
-    if (cchr == ')' && inPrnth && !jcip) {
+    if (cchr == ')' && inPrnth && !inString && !jcip) {
       inPrnth = false;
     }
   }
