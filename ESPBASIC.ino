@@ -519,6 +519,19 @@ String getval(String in) {
   bool inPrnth = false;
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
+    //Serial.println(String(i, DEC) + ": " + String(cchr, DEC));
+    bool jac = false;
+    if (cchr == 39 && !inString && !inPrnth) {
+      if (in.charAt(i + 2) == 39) {
+        i = i + 3;
+        cchr = in.charAt(i);
+        jac = true;
+        isString = true;
+      } else {
+        gve = 1;
+        return "";
+      }
+    }
     do {
       if (cchr == ' ' && !inString) {
         in = getFrontStr(in, i) + getBackStr(in, i + 1);
@@ -539,6 +552,10 @@ String getval(String in) {
     if (true/*!inString*/) {
       if (isOp(cchr) && !inString && !inPrnth) {
         //Serial.println(cbfr);
+        if (cchr != '+' && isString) {
+          gve = 1;
+          return "";
+        }
         if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {
           goto svd;
         }
@@ -609,8 +626,10 @@ String getval(String in) {
 svd:
           cbfr = "";
         } else {
-          gve = 1;
-          return "";
+          if (!jac) {
+            gve = 1;
+            return "";
+          }
         }
       } else {
         cbfr += cchr; vep = i; if (!svsp) {
@@ -637,6 +656,7 @@ svd:
     gve = 2;
     return "";
   }
+  //Serial.println(in);
   if (isString) {
     inString = false;
     bool jcis = false;
@@ -646,6 +666,11 @@ svd:
       if (cchr == '"' && inString) {
         inString = false;
         jcis = true;
+      }
+      if (cchr == 39) {
+        i++;
+        cchr = in.charAt(i);
+        inString = !inString;
       }
       if (inString) {
         out += cchr;
