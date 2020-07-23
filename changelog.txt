@@ -4,6 +4,12 @@ v0.0.0.14:
   added sound functionality
   added BASIC command: SNDTEST
   split off extra commands into separate file
+  added startup chime sound test:
+    F1 = Square wave
+    F2 = Triangle wave
+    F3 = Sawtooth wave
+    F4 = Sine wave
+    F5 = Noise wave
 v0.0.0.13:
   fixed bugs in dummy terminal
 v0.0.0.12:
