@@ -1,3 +1,9 @@
+v0.0.0.14:
+  fixed expression interpreter bugs
+  added fully functional string interpreter
+  added sound functionality
+  added BASIC command: SNDTEST
+  split off extra commands into separate file
 v0.0.0.13:
   fixed bugs in dummy terminal
 v0.0.0.12:
