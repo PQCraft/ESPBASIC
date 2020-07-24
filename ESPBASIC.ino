@@ -173,7 +173,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.14");
+  mkvar("VER", 5, 0, "0.0.0.15");
   mkvar("VER", 5, 0, "R.I.P.");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
@@ -520,6 +520,12 @@ String getval(String in) {
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
     //Serial.println(String(i, DEC) + ": " + String(cchr, DEC));
+    do {
+      if (cchr == ' ' && !inString) {
+        in = getFrontStr(in, i) + getBackStr(in, i + 1);
+        cchr = in.charAt(i);
+      }
+    } while (cchr == ' ' && !inString);
     bool jac = false;
     if (cchr == 39 && !inString && !inPrnth) {
       if (in.charAt(i + 2) == 39) {
@@ -527,17 +533,17 @@ String getval(String in) {
         cchr = in.charAt(i);
         jac = true;
         isString = true;
+        do {
+          if (cchr == ' ' && !inString) {
+            in = getFrontStr(in, i) + getBackStr(in, i + 1);
+            cchr = in.charAt(i);
+          }
+        } while (cchr == ' ' && !inString);
       } else {
         gve = 1;
         return "";
       }
     }
-    do {
-      if (cchr == ' ' && !inString) {
-        in = getFrontStr(in, i) + getBackStr(in, i + 1);
-        cchr = in.charAt(i);
-      }
-    } while (cchr == ' ' && !inString);
     bool jcis = false;
     bool jcip = false;
     if (cchr == '"' && !inString) {
