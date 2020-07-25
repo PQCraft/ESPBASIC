@@ -1105,21 +1105,6 @@ unsigned long timer() {
 void resetTimer(unsigned long v) {
   tsv = millis() - v;
 }
-/*void vMode(byte m) {
-  m = bitRead(m, 1) * 2 + bitRead(m, 0);
-  //if (m == 0) { VGA.setResolution(VGA_256x384_60Hz); }
-  if (m == 0) { VGA.setResolution(VGA_320x200_75Hz); }
-  if (m == 1) { VGA.setResolution(QVGA_320x240_60Hz); }
-  if (m == 2) { VGA.setResolution(VGA_512x384_60Hz); }
-  if (m == 3) { VGA.setResolution(VGA_640x400_70Hz); }
-  //if (m == 3) { VGA.setResolution(VGA_512x384_60Hz); }
-  GFX.selectFont(&fabgl::FONT_8x8);
-  GFX.setGlyphOptions(GlyphOptions().FillBackground(true));
-  GFX.setScrollingRegion(0, 0, VGA.getScreenWidth() - 1, VGA.getScreenHeight() - 1);
-  setFGColor(fgc);
-  setBGColor(bgc);
-  //cls();
-  }*/
 void printChar(char c) {
   //Serial.println(c);
   //Serial.println(tcx);
