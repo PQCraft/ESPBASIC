@@ -34,7 +34,7 @@ int           tcy;
 bool          tcm;
 int           chr;
 int           tbp;
-char          tbfr[30][40];
+char          tbfr[48][40];
 //char          pmem[1];
 bool          ctlkey;
 bool          altkey;
@@ -43,7 +43,8 @@ bool          sftkey;
 //byte          hr;
 long          pmp;
 long          mas = 65536;
-long          pms = 65536;
+long          pms = mas;
+//char          pmem[65536];
 char          *pmem = (char *)malloc(mas);
 char          *line = (char *)malloc(2048);
 long          vmp = pms - 1;
@@ -53,6 +54,8 @@ byte          gve = 0;
 byte          gvt = 0;
 byte          gfe = 0;
 byte          gft = 0;
+byte          vlines = 0;
+byte          vclmns = 0;
 int ltcx;
 int ltcy;
 //#define EBVER "0.0.0.0";
@@ -64,12 +67,9 @@ void setup() {
   PS2.begin(PS2Preset::KeyboardPort0);
   auto KB0 = PS2.keyboard();
   VGA.begin();
-  VGA.setResolution(QVGA_320x240_60Hz);
-  GFX.selectFont(&fabgl::FONT_8x8);
-  GFX.setGlyphOptions(GlyphOptions().FillBackground(true));
-  GFX.setScrollingRegion(0, 0, VGA.getScreenWidth() - 1, VGA.getScreenHeight() - 1);
-  setFGColor(fgc);
-  setBGColor(bgc);
+  //VGA.setResolution(QVGA_320x240_60Hz);
+  //VGA.setResolution(VGA_400x300_60Hz);
+  setvm(2);
   //vMode(1);
   cls();
   tcm = 1;
@@ -173,7 +173,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.16");
+  mkvar("VER", 5, 0, "0.0.0.17");
   //mkvar("VER", 5, 0, "R.I.P.");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
@@ -283,11 +283,26 @@ aib:
       setCpuFrequencyMhz(240);
       nac = false;
     }
+    if (CMD == "VMODE0") {
+      locate(0, 0);
+      setvm(0);
+      cls();
+      nac = false;
+    }
+    if (CMD == "VMODE1") {
+      locate(0, 0);
+      setvm(1);
+      cls();
+      nac = false;
+    }
+    if (CMD == "VMODE2") {
+      locate(0, 0);
+      setvm(2);
+      cls();
+      nac = false;
+    }
     if (nac) {
       printErr(3, CMD);
-    }
-    for (long i = 0; i < 2047; i++) {
-      line[i] = 0;
     }
   } while (!exitBASIC);
   do {} while (true);
@@ -333,6 +348,26 @@ void dummy() {
       printChar(chr);
     }
   } while (true);
+}
+void setvm(byte vm) {
+  if (vm == 0) {
+    VGA.setResolution(VGA_256x384_60Hz);
+    vlines = 48;
+    vclmns = 32;
+  } else if (vm == 1) {
+    VGA.setResolution(VGA_320x200_75Hz);
+    vlines = 25;
+    vclmns = 40;
+  } else if (vm == 2) {
+    VGA.setResolution(QVGA_320x240_60Hz);
+    vlines = 30;
+    vclmns = 40;
+  }
+  GFX.selectFont(&fabgl::FONT_8x8);
+  GFX.setGlyphOptions(GlyphOptions().FillBackground(true));
+  GFX.setScrollingRegion(0, 0, VGA.getScreenWidth() - 1, VGA.getScreenHeight() - 1);
+  setFGColor(fgc);
+  setBGColor(bgc);
 }
 void pgve(String edat) {
   if (gve == 1) {
@@ -418,6 +453,9 @@ void rfSND() {
   }
 }
 void prompt(String pt) {
+  for (long i = 0; i < 2047; i++) {
+    line[i] = 0;
+  }
   int lp = 0;
   int ttcx;
   int ttcy;
@@ -778,6 +816,7 @@ long getFreePM() {
 void clrpmem() {
   for (long i = 0; i < pms; i++) {
     pmem[i] = 0;
+    //if (pmem[i] != 0) {Serial.println("pmem format error: byte " + String(i, DEC) + " did not comply.");}
   }
   for (long i = 0; i < 2047; i++) {
     line[i] = 0;
@@ -987,15 +1026,15 @@ void pmWStr(String s) {
   }
 }
 void rfScrTxt() {
-  for (byte i = 0; i < 30; i++) {
-    for (byte j = 0; j < 40; j++) {
+  for (byte i = 0; i < vlines; i++) {
+    for (byte j = 0; j < vclmns; j++) {
       GFX.drawChar(j * 8, i * 8, getbfrc(j, i));
     }
   }
 }
 void clrTxtBfr() {
-  for (byte i = 0; i < 30; i++) {
-    for (byte j = 0; j < 40; j++) {
+  for (byte i = 0; i < vlines; i++) {
+    for (byte j = 0; j < vclmns; j++) {
       setbfrc(j, i, 0);
     }
   }
@@ -1020,34 +1059,34 @@ void drawCursor(int x, int y) {
   }
 }
 unsigned char getbfrc(byte xp, byte yp) {
-  if (tbp > 29) {
+  if (tbp > vlines - 1) {
     tbp = 0;
   }
   if (tbp < 0) {
-    tbp = 29;
+    tbp = vlines - 1;
   }
   yp = yp + tbp;
-  if (yp > 29) {
-    yp = yp - 30;
+  if (yp > vlines - 1) {
+    yp = yp - vlines;
   }
   return tbfr[yp][xp];
 }
 void setbfrc(byte xp, byte yp, char wchar) {
-  if (tbp > 29) {
+  if (tbp > vlines - 1) {
     tbp = 0;
   }
   if (tbp < 0) {
-    tbp = 29;
+    tbp = vlines - 1;
   }
   yp = yp + tbp;
-  if (yp > 29) {
-    yp = yp - 30;
+  if (yp > vlines - 1) {
+    yp = yp - vlines;
   }
   tbfr[yp][xp] = wchar;
 }
 void cbfrcln() {
-  for (byte i = 0; i < 40; i++) {
-    setbfrc(i, 29, 0);
+  for (byte i = 0; i < vclmns; i++) {
+    setbfrc(i, vlines - 1, 0);
   }
 }
 unsigned long sec() {

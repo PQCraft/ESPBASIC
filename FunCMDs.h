@@ -1,21 +1,18 @@
-// ESPBASIC eXtra commands v0.0.0.16
+// ESPBASIC eXtra commands v0.0.0.17
 ///*
 //Uncomment this section to enable the crash command
 if (CMD == "CRASH") {
-  sicon(3); printString("Are you sure?");
-ck:
-  rfKB();
-  drawCursor(tcx, tcy);
-  if (chr == 'y' || chr == 'Y') {
+  sicon(3); prompt("Are you sure?: ");
+  lineString = line; lineString.trim(); lineString.toUpperCase();
+  if (lineString == "Y" || lineString == "YES") {
     goto oof;
-  } else if (chr != 0) {
+  } else {
     goto whew;
   }
-  goto ck;
 oof:
   randomSeed(timer());
   long rip;
-  do {
+  while (true) {
     rip = random(-98304, 165940);
     rfKB();
     drawCursor(tcx, tcy);
@@ -27,7 +24,7 @@ oof:
     setFGColor(fgc);
     setBGColor(bgc);
     rfScrTxt();
-  } while (true);
+  }
 whew:
   printChar(13);
   nac = false;
