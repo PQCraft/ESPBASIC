@@ -173,8 +173,8 @@ void espbasic() {
   mas = pms;
   clrpmem();
   pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.15");
-  mkvar("VER", 5, 0, "R.I.P.");
+  mkvar("VER", 5, 0, "0.0.0.16");
+  //mkvar("VER", 5, 0, "R.I.P.");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -555,93 +555,91 @@ String getval(String in) {
       inPrnth = true;
       jcip = true;
     }
-    if (true/*!inString*/) {
-      if (isOp(cchr) && !inString && !inPrnth) {
-        //Serial.println(cbfr);
-        if (cchr != '+' && isString) {
-          gve = 1;
-          return "";
-        }
-        if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {
-          goto svd;
-        }
-        if (cbfr != "") {
-          osl = in.length();
-          if (!isNum(cbfr)) {
-            if (getvart(cbfr) == 5) {
+    if (isOp(cchr) && !inString && !inPrnth) {
+      //Serial.println(cbfr);
+      if (cchr != '+' && isString) {
+        gve = 1;
+        return "";
+      }
+      if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {
+        goto svd;
+      }
+      if (cbfr != "") {
+        osl = in.length();
+        if (!isNum(cbfr)) {
+          if (getvart(cbfr) == 5) {
+            in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
+            isString = true;
+          } else if (getvart(cbfr) == 0) {
+            if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
               in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
               isString = true;
-            } else if (getvart(cbfr) == 0) {
-              if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
-                in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
-                isString = true;
-              } else {
-                in = getFrontStr(in, vbp) + getvar(cbfr).toFloat() + getBackStr(in, vep + 1);
-                isNumber = true;
-              }
-            } else if (getvart(cbfr) == -1) {
-              if (isValVS(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
-                in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
-                if (gfe != 0) {
-                  gve = 4;
-                  return getFrontStr(cbfr, cbfr.indexOf('('));
-                }
-                if (isNumber == true && gft == 1) {
-                  gve = 2;
-                  return "";
-                }
-              } else if (cbfr.charAt(0) == '(' && cbfr.charAt(cbfr.length() - 1) == ')') {
-                if (getChoppedStr(cbfr, 1, 1) != "") {
-                  in = getFrontStr(in, vbp) + getval(getChoppedStr(cbfr, 1, 1)) + getBackStr(in, vep + 1);
-                  if (gve > 0) {
-                    return "";
-                  }
-                  if (gvt == 1 && isNumber) {
-                    gve = 2;
-                    return "";
-                  }
-                  if (isNumber == true && gvt == 1) {
-                    gve = 2;
-                    return "";
-                  }
-                } else {
-                  /*if (isString) {
-                    in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
-                    } else {
-                    in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
-                    }*/
-                  gve = 1;
-                  return "";
-                }
-              } else if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
-                in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
-                isString = true;
-              } else {
-                gve = 3; return "";
-              }
             } else {
               in = getFrontStr(in, vbp) + getvar(cbfr).toFloat() + getBackStr(in, vep + 1);
               isNumber = true;
             }
-            nsl = in.length();
-            i += nsl - osl;
-            svsp = false;
+          } else if (getvart(cbfr) == -1) {
+            if (isValVS(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
+              in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
+              if (gfe != 0) {
+                gve = 4;
+                return getFrontStr(cbfr, cbfr.indexOf('('));
+              }
+              if (isNumber == true && gft == 1) {
+                gve = 2;
+                return "";
+              }
+            } else if (cbfr.charAt(0) == '(' && cbfr.charAt(cbfr.length() - 1) == ')') {
+              if (getChoppedStr(cbfr, 1, 1) != "") {
+                in = getFrontStr(in, vbp) + getval(getChoppedStr(cbfr, 1, 1)) + getBackStr(in, vep + 1);
+                if (gve > 0) {
+                  return "";
+                }
+                if (gvt == 1 && isNumber) {
+                  gve = 2;
+                  return "";
+                }
+                if (isNumber == true && gvt == 1) {
+                  gve = 2;
+                  return "";
+                }
+              } else {
+                /*if (isString) {
+                  in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
+                  } else {
+                  in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
+                  }*/
+                gve = 1;
+                return "";
+              }
+            } else if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
+              in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
+              isString = true;
+            } else {
+              gve = 3; return "";
+            }
           } else {
+            in = getFrontStr(in, vbp) + getvar(cbfr).toFloat() + getBackStr(in, vep + 1);
             isNumber = true;
           }
-svd:
-          cbfr = "";
+          nsl = in.length();
+          i += nsl - osl;
+          svsp = false;
         } else {
-          if (!jac) {
-            gve = 1;
-            return "";
-          }
+          isNumber = true;
         }
+svd:
+        cbfr = "";
       } else {
-        cbfr += cchr; vep = i; if (!svsp) {
-          vbp = i;
-          svsp = true;
+        if (!jac) {
+          gve = 1;
+          return "";
         }
+      }
+    } else {
+      cbfr += cchr; vep = i; if (!svsp) {
+        vbp = i;
+        svsp = true;
       }
     }
     if (cchr == '"' && inString && !jcis) {
@@ -665,6 +663,7 @@ svd:
   //Serial.println(in);
   if (isString) {
     inString = false;
+    //bool inChar = false;
     bool jcis = false;
     for (int i = 0; i < in.length(); i++) {
       cchr = in.charAt(i);
@@ -673,10 +672,12 @@ svd:
         inString = false;
         jcis = true;
       }
-      if (cchr == 39) {
+      if (cchr == 39 && !inString) {
         i++;
         cchr = in.charAt(i);
-        inString = !inString;
+        out += cchr;
+        i++;
+        cchr = in.charAt(i);
       }
       if (inString) {
         out += cchr;
@@ -686,7 +687,7 @@ svd:
       }
     }
   } else {
-
+    out = getChoppedStr(in, 0, 1);
   }
   in = getFrontStr(in, in.length() - 1);
   //if (ap) {in = '(' + in + ')';}
