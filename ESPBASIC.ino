@@ -738,7 +738,7 @@ String getfunc(String fstr) {
   String FUNC = getFrontStr(fstr, fstr.indexOf('('));
   String FARG = getMidStr(fstr, fstr.indexOf('('), fstr.lastIndexOf(')'));
   FUNC.toUpperCase();
-  Serial.println(FUNC);
+  //Serial.println(FUNC);
   gfe = 1;
   return "";
 }
@@ -823,7 +823,7 @@ void clrpmem() {
   }
 }
 bool mkvar(String vn, byte t, float vlng, String vstr) {
-  Serial.println("mkvar");
+  //Serial.println("mkvar");
   vn.toUpperCase();
   if (!isValVS(vn)) {
     return false;
@@ -886,18 +886,18 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
   } else {
     pmWStr(vstr); pmWChr(0);
   }
-  for (long i = vmp; i < pms; i++) {Serial.println(String(i, DEC) + ": " + String(pmem[i], DEC));};
+  //for (long i = vmp; i < pms; i++) {Serial.println(String(i, DEC) + ": " + String(pmem[i], DEC));};
   return true;
 }
 String getvar(String vn) {
-  Serial.println("getvar");
+  //Serial.println("getvar");
   vn.toUpperCase();
   long vpos = findvar(vn, vmp);
   if (vpos == -1) {
     return "";
   }
   byte vtype = getvart(vn);
-  Serial.println(vtype);
+  //Serial.println(vtype);
   if (vtype == 0) {
     return "";
   }
@@ -927,7 +927,7 @@ void delvar(String vn) {
   }
 }
 int getvart(String vn) {
-  Serial.println("getvart");
+  //Serial.println("getvart");
   vn.toUpperCase(); vn.trim();
   if (!isValVS(vn)) {
     return -1;
@@ -983,14 +983,14 @@ long findCharRevPM(char fc, long pos) {
   return -1;
 }
 long findvar(String fvn, long pos) {
-  Serial.println("findvar");
-  Serial.println(fvn);
+  //Serial.println("findvar");
+  //Serial.println(fvn);
   String vbfr = "";
   char cvchr = 0;
   long fvpos = pos;
   for (long i = pos; i < pms - 1; i++) {
     cvchr = pmem[i];
-    Serial.println(String(i, DEC) + ", " + String(cvchr, DEC) + ", " + vbfr);
+    //Serial.println(String(i, DEC) + ", " + String(cvchr, DEC) + ", " + vbfr);
     if (cvchr == 0) {
       if (vbfr == fvn) {
         return fvpos;
