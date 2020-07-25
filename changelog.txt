@@ -1,3 +1,8 @@
+v0.0.0.17:
+  added video multiple video modes
+  added BASIC command: VMODE0
+  added BASIC command: VMODE1
+  added BASIC command: VMODE2
 v0.0.0.16:
   fixed expression interpreter bugs
 v0.0.0.15:
