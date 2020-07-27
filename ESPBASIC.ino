@@ -173,7 +173,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.18");
+  mkvar("VER", 5, 0, "0.0.0.19");
   //mkvar("VER", 5, 0, "R.I.P.");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
@@ -526,179 +526,134 @@ void prompt(String pt) {
   } while (chr != 13);
 }
 String getval(String in) {
+  String out = "";
   gve = 0;
   gvt = 0;
   String cbfr = "";
-  bool sfo = false;
-  bool inString = false;
-  String out;
-  int vep = 0;
-  int vbp = 0;
+  //String tbfr = "";
   in.trim();
-  //temporary
-  //return in;
-  // ^^^^^^^^
-  if (isOp(in.charAt(0))) {
-    gve = 1;
+  if (in == "") {
     return "";
   }
-  if (isOp(in.charAt(in.length() - 1))) {
-    gve = 1;
-    return "";
-  }
-  inString = false;
   in += '+';
-  bool svsp = false;
   char cchr = 0;
-  int osl = 0;
-  int nsl = 0;
+  int fcp = 0;
+  bool inString = false;
   bool isString = false;
   bool isNumber = false;
-  bool inPrnth = false;
+  bool inPrnth  = false;
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
-    //Serial.println(String(i, DEC) + ": " + String(cchr, DEC));
-    do {
-      if (cchr == ' ' && !inString) {
-        in = getFrontStr(in, i) + getBackStr(in, i + 1);
-        cchr = in.charAt(i);
-      }
-    } while (cchr == ' ' && !inString);
-    bool jac = false;
-    if (cchr == 39 && !inString && !inPrnth) {
-      if (in.charAt(i + 2) == 39) {
-        i = i + 3;
-        cchr = in.charAt(i);
-        jac = true;
-        isString = true;
-        do {
-          if (cchr == ' ' && !inString) {
-            in = getFrontStr(in, i) + getBackStr(in, i + 1);
-            cchr = in.charAt(i);
-          }
-        } while (cchr == ' ' && !inString);
-      } else {
-        gve = 1;
-        return "";
-      }
-    }
     bool jcis = false;
     bool jcip = false;
-    if (cchr == '"' && !inString) {
-      inString = true;
+    if (cchr == '"' && inString && !inPrnth) {
+      inString = false;
       jcis = true;
-      isString = true;
     }
-    if (cchr == '(' && !inString && cbfr == "") {
-      inPrnth = true;
+    if (cchr == ')' && inPrnth && !inString) {
+      inPrnth = false;
       jcip = true;
     }
+    if (cchr == 39 && !inString) {
+      cbfr += cchr;
+rachk:
+      i++;
+      cchr = in.charAt(i);
+      if (cchr != 39) {
+        cbfr += cchr;
+        goto rachk;
+      }
+      cbfr += cchr;
+      i++;
+      cchr = in.charAt(i);
+    }
     if (isOp(cchr) && !inString && !inPrnth) {
-      //Serial.println(cbfr);
-      if (cchr != '+' && isString) {
+      if (cbfr == "") {
         gve = 1;
         return "";
       }
-      if (cbfr.charAt(0) == '"' && cbfr.charAt(cbfr.length() - 1) == '"') {
-        goto svd;
-      }
-      if (cbfr != "") {
-        osl = in.length();
-        if (!isNum(cbfr)) {
-          if (getvart(cbfr) == 5) {
-            in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
-            isString = true;
-          } else if (getvart(cbfr) == 0) {
-            if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
-              in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
-              isString = true;
-            } else {
-              in = getFrontStr(in, vbp) + getvar(cbfr).toFloat() + getBackStr(in, vep + 1);
-              isNumber = true;
-            }
-          } else if (getvart(cbfr) == -1) {
-            if (isValVS(getFrontStr(cbfr, cbfr.indexOf('('))) && getFrontStr(cbfr, cbfr.indexOf('(')) != "" && cbfr.charAt(cbfr.length() - 1) == ')') {
-              in = getFrontStr(in, vbp) + getfunc(cbfr) + getBackStr(in, vep + 1);
-              if (gfe != 0) {
-                gve = 4;
-                return getFrontStr(cbfr, cbfr.indexOf('('));
-              }
-              if (isNumber == true && gft == 1) {
-                gve = 2;
-                return "";
-              }
-            } else if (cbfr.charAt(0) == '(' && cbfr.charAt(cbfr.length() - 1) == ')') {
-              if (getChoppedStr(cbfr, 1, 1) != "") {
-                in = getFrontStr(in, vbp) + getval(getChoppedStr(cbfr, 1, 1)) + getBackStr(in, vep + 1);
-                if (gve > 0) {
-                  return "";
-                }
-                if (gvt == 1 && isNumber) {
-                  gve = 2;
-                  return "";
-                }
-                if (isNumber == true && gvt == 1) {
-                  gve = 2;
-                  return "";
-                }
-              } else {
-                /*if (isString) {
-                  in = getFrontStr(in, vbp) + '"' + '"' + getBackStr(in, vep + 1);
-                  } else {
-                  in = getFrontStr(in, vbp) + "0.00" + getBackStr(in, vep + 1);
-                  }*/
-                gve = 1;
-                return "";
-              }
-            } else if (isValVS(getFrontStr(cbfr, cbfr.length() - 1)) && cbfr.charAt(cbfr.length() - 1) == '$') {
-              in = getFrontStr(in, vbp) + '"' + getvar(cbfr) + '"' + getBackStr(in, vep + 1);
-              isString = true;
-            } else {
-              gve = 3; return "";
-            }
-          } else {
-            in = getFrontStr(in, vbp) + getvar(cbfr).toFloat() + getBackStr(in, vep + 1);
-            isNumber = true;
-          }
-          nsl = in.length();
-          i += nsl - osl;
-          svsp = false;
-        } else {
-          isNumber = true;
-        }
-svd:
-        cbfr = "";
-      } else {
-        if (!jac) {
+      int inoldlen = in.length();
+      cbfr.trim();
+      char fchr = cbfr.charAt(0);
+      char lchr = cbfr.charAt(cbfr.length() - 1);
+      if (fchr == '"') {
+        if (lchr != '"') {
           gve = 1;
           return "";
         }
+        isString = true;
+      } else if (isNum(cbfr)) {
+        isNumber = true;
+      } else if (fchr == 39 && lchr == 39) {
+        if (cbfr.length() != 3) {
+          gve = 1;
+          return "";
+        }
+        isString = true;
+      } else if (fchr == '(' && lchr == ')') {
+        String gvhv = getval(getChoppedStr(cbfr, 1, 1));
+        if (gve > 0) {
+          return "";
+        }
+        if (isNumber && gvt == 1) {
+          gve = 2;
+          return "";
+        }
+        if (isString && gvt == 0) {
+          gve = 2;
+          return "";
+        }
+        if (gvt == 1) {
+          gvhv = '"' + gvhv + '"';
+          isString = true;
+        } else {
+          isNumber = true;
+        }
+        in = getFrontStr(in, fcp) + gvhv + getChoppedStr(in, i, 0);
+      } else if (isAlphaNumeric(fchr) && lchr == ')') {
+        in = getFrontStr(in, fcp) + getfunc(cbfr) + getChoppedStr(in, i, 0);
+        if (gfe > 0) {
+          gve = 4;
+          return getFrontStr(cbfr, cbfr.indexOf('('));
+        }
+      } else if (isValVN(cbfr)) {
+        if (getvart(cbfr, true) == 5) {
+          isString = true;
+        } else {
+          isNumber = true;
+        }
+        if (isString) {
+          in = getFrontStr(in, fcp) + '"' + getvar(cbfr) + '"' + getChoppedStr(in, i, 0);
+        } else {
+          in = getFrontStr(in, fcp) + getvar(cbfr) + getChoppedStr(in, i, 0);
+        }
+      } else {
+        gve = 3;
+        return "";
       }
+      cbfr = "";
+      i += in.length() - inoldlen;
+      fcp = i + 1;
     } else {
-      cbfr += cchr; vep = i; if (!svsp) {
-        vbp = i;
-        svsp = true;
-      }
+      cbfr += cchr;
     }
-    if (cchr == '"' && inString && !jcis) {
-      inString = false;
+    if (cchr == '(' && !jcis && !inPrnth) {
+      inPrnth = true;
     }
-    if (cchr == ')' && inPrnth && !inString && !jcip) {
-      inPrnth = false;
+    if (cchr == 39 && !jcip && !inString) {
+      inString = true;
     }
   }
   if (inString || inPrnth) {
     gve = 1;
     return "";
   }
-  if (!isString && !isNumber) {
-    isNumber = true;
-  }
   if (isString && isNumber) {
     gve = 2;
     return "";
   }
-  //Serial.println(in);
+  gvt = isString;
+  inString = false;
   if (isString) {
     inString = false;
     //bool inChar = false;
@@ -719,6 +674,9 @@ svd:
       }
       if (inString) {
         out += cchr;
+      } else if (cchr == '-' || cchr == '*' || cchr == '/' || cchr == '^') {
+        gve = 1;
+        return "";
       }
       if (cchr == '"' && !inString && !jcis) {
         inString = true;
@@ -825,7 +783,7 @@ void clrpmem() {
 bool mkvar(String vn, byte t, float vlng, String vstr) {
   //Serial.println("mkvar");
   vn.toUpperCase();
-  if (!isValVS(vn)) {
+  if (!isValVN(vn)) {
     return false;
   }
   //Serial.println(findvar(vn, vmp + 1));
@@ -896,10 +854,14 @@ String getvar(String vn) {
   if (vpos == -1) {
     return "";
   }
-  byte vtype = getvart(vn);
+  byte vtype = getvart(vn, false);
   //Serial.println(vtype);
   if (vtype == 0) {
-    return "";
+    if (getvart(vn, true) == 5) {
+      return """";
+    } else {
+      return "0.00";
+    }
   }
   String vval;
   if (vtype == 5) {
@@ -910,10 +872,6 @@ String getvar(String vn) {
     }
   }
   return vval;
-  //for (long i = findCharRevPM(255, pms); i < pms; i++) {Serial.println(String(pmem[i], DEC));};
-  /*if (vpos > -1) {
-    for (long i = vpos; i < pms; i++) {Serial.println(String(pmem[i], DEC));};
-    } else {Serial.println("var not found");}*/
 }
 void delvar(String vn) {
   vn.toUpperCase();
@@ -926,22 +884,33 @@ void delvar(String vn) {
     }
   }
 }
-int getvart(String vn) {
+int getvart(String vn, bool at) {
   //Serial.println("getvart");
   vn.toUpperCase(); vn.trim();
-  if (!isValVS(vn)) {
+  if (isValVN(vn)) {
+    long vpos = findvar(vn, vmp);
+    if (vpos != -1) {
+      return pmem[vpos + vn.length() + 3];
+    }
+    if (at) {
+      if (vn.charAt(vn.length() - 1) == '$') {
+        return 5;
+      }
+      return 1;
+    } else {
+      return 0;
+    }
+  } else {
     return -1;
   }
-  long vpos = findvar(vn, vmp);
-  if (vpos == -1) {
-    return 0;
-  }
-  return pmem[vpos + vn.length() + 3];
 }
-bool isValVS(String str) {
+bool isValVN(String str) {
   if (str.length() == 0) {
     return false;
   }
+  //if (isNum(str)) {
+  //  return false;
+  //}
   int anc = 0;
   for (int i = 0 ; i < str.length(); i++) {
     if (isAlphaNumeric(str.charAt(i)) || str.charAt(i) == '_') {
