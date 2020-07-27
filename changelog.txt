@@ -1,3 +1,5 @@
+v0.0.0.19:
+  redid the string interpreter
 v0.0.0.18:
   fixed variable storage bug
 v0.0.0.17:
