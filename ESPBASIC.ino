@@ -52,6 +52,7 @@ bool          noscroll = false;
 byte          sc;
 byte          gve = 0;
 byte          gvt = 0;
+float         gvn = 0;
 byte          gfe = 0;
 byte          gft = 0;
 byte          vlines = 0;
@@ -69,7 +70,7 @@ void setup() {
   VGA.begin();
   //VGA.setResolution(QVGA_320x240_60Hz);
   //VGA.setResolution(VGA_400x300_60Hz);
-  setvm(2);
+  setvm(2, false);
   //vMode(1);
   cls();
   tcm = 1;
@@ -173,7 +174,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.19");
+  mkvar("VER", 5, 0, "0.0.0.20");
   //mkvar("VER", 5, 0, "R.I.P.");
   mkvar("REV", 5, 0, "Alpha");
   Serial.println(F("Started ESPBASIC"));
@@ -285,19 +286,37 @@ aib:
     }
     if (CMD == "VMODE0") {
       locate(0, 0);
-      setvm(0);
+      setvm(0, false);
       cls();
       nac = false;
     }
     if (CMD == "VMODE1") {
       locate(0, 0);
-      setvm(1);
+      setvm(1, false);
       cls();
       nac = false;
     }
     if (CMD == "VMODE2") {
       locate(0, 0);
-      setvm(2);
+      setvm(2, false);
+      cls();
+      nac = false;
+    }
+    if (CMD == "VMODE3") {
+      locate(0, 0);
+      setvm(0, true);
+      cls();
+      nac = false;
+    }
+    if (CMD == "VMODE4") {
+      locate(0, 0);
+      setvm(1, true);
+      cls();
+      nac = false;
+    }
+    if (CMD == "VMODE5") {
+      locate(0, 0);
+      setvm(2, true);
       cls();
       nac = false;
     }
@@ -349,20 +368,27 @@ void dummy() {
     }
   } while (true);
 }
-void setvm(byte vm) {
+void setvm(byte vm, bool sl) {
+  String res = "";
   if (vm == 0) {
-    VGA.setResolution(VGA_256x384_60Hz);
+    res = VGA_256x384_60Hz;
     vlines = 48;
     vclmns = 32;
   } else if (vm == 1) {
-    VGA.setResolution(VGA_320x200_75Hz);
+    res = VGA_320x200_75Hz;
     vlines = 25;
     vclmns = 40;
   } else if (vm == 2) {
-    VGA.setResolution(QVGA_320x240_60Hz);
+    res = QVGA_320x240_60Hz;
     vlines = 30;
     vclmns = 40;
   }
+  if (sl) {
+    res += " MultiScanBlank";
+  }
+  char cres[128];
+  res.toCharArray(cres, 128);
+  VGA.setResolution(cres);
   GFX.selectFont(&fabgl::FONT_8x8);
   GFX.setGlyphOptions(GlyphOptions().FillBackground(true));
   GFX.setScrollingRegion(0, 0, VGA.getScreenWidth() - 1, VGA.getScreenHeight() - 1);
@@ -378,6 +404,8 @@ void pgve(String edat) {
     printErr(8, "");
   } else if (gve == 4) {
     printErr(4, edat);
+  } else if (gve == 5) {
+    printErr(9, "");
   }
 }
 void SND_setVol(byte ch, byte nv) {
@@ -582,8 +610,10 @@ rachk:
           return "";
         }
         isString = true;
+        in = getFrontStr(in, fcp) + cbfr + getChoppedStr(in, i, 0);
       } else if (isNum(cbfr)) {
         isNumber = true;
+        in = getFrontStr(in, fcp) + cbfr + getChoppedStr(in, i, 0);
       } else if (fchr == 39 && lchr == 39) {
         if (cbfr.length() != 3) {
           gve = 1;
@@ -593,7 +623,7 @@ rachk:
       } else if (fchr == '(' && lchr == ')') {
         String gvhv = getval(getChoppedStr(cbfr, 1, 1));
         if (gve > 0) {
-          return "";
+          return gvhv;
         }
         if (isNumber && gvt == 1) {
           gve = 2;
@@ -619,13 +649,14 @@ rachk:
       } else if (isValVN(cbfr)) {
         if (getvart(cbfr, true) == 5) {
           isString = true;
-        } else {
-          isNumber = true;
-        }
-        if (isString) {
           in = getFrontStr(in, fcp) + '"' + getvar(cbfr) + '"' + getChoppedStr(in, i, 0);
         } else {
-          in = getFrontStr(in, fcp) + getvar(cbfr) + getChoppedStr(in, i, 0);
+          isNumber = true;
+          if (getvart(cbfr, false) == 0) {
+            in = getFrontStr(in, fcp) + '0' + getChoppedStr(in, i, 0);
+          } else {
+            in = getFrontStr(in, fcp) + getvar(cbfr) + getChoppedStr(in, i, 0);
+          }
         }
       } else {
         gve = 3;
@@ -682,10 +713,127 @@ rachk:
         inString = true;
       }
     }
+    in = getFrontStr(in, in.length() - 1);
   } else {
-    out = getChoppedStr(in, 0, 1);
+    //out = getChoppedStr(in, 0, 1);
+    in = '+' + in;
+    String v1 = "";
+    String v2 = "";
+    String vo = "";
+    int opos = -1;
+    int fpos = -1;
+    int lpos = -1;
+dep:
+    opos = in.indexOf('^');
+    if (opos != -1) {
+      fpos = opos + 1;
+nc2:
+      cchr = in.charAt(fpos);
+      if (!isOp(cchr)) {
+        v2 += cchr;
+        fpos++;
+        goto nc2;
+      }
+      lpos = opos - 1;
+nc1:
+      cchr = in.charAt(lpos);
+      if (!isOp(cchr)) {
+        v1 = cchr + v1;
+        lpos--;
+        goto nc1;
+      }
+      vo = String(pow(v1.toFloat(), v2.toFloat()));
+      in = getFrontStr(in, lpos + 1) + vo + getChoppedStr(in, fpos, 0);
+    } else {
+      goto dmd;
+    }
+    goto dep;
+dmd:
+    int p1 = in.indexOf('*');
+    int p2 = in.indexOf('/');
+    opos = -1;
+    bool pn = p1 != -1 && p2 != -1;
+    bool d = false;
+    if (pn) {
+      if (p1 < p2) {
+        opos = p1;
+        d = false;
+      } else if (p2 < p1) {
+        opos = p2;
+        d = true;
+      }
+    } else {
+      if (p1 != -1) {
+        opos = p1;
+        d = false;
+      }
+      if (p2 != -1) {
+        opos = p2;
+        d = true;
+      }
+    }
+    if (opos != -1) {
+      v1 = "";
+      v2 = "";
+      fpos = opos + 1;
+nc4:
+      cchr = in.charAt(fpos);
+      if (!isOp(cchr)) {
+        v2 += cchr;
+        fpos++;
+        goto nc4;
+      }
+      lpos = opos - 1;
+nc3:
+      cchr = in.charAt(lpos);
+      if (!isOp(cchr)) {
+        v1 = cchr + v1;
+        lpos--;
+        goto nc3;
+      }
+      //Serial.println(v1+", "+v2);
+      if (d) {
+        if (v2.toFloat() == 0) {
+          gve = 5;
+          return "";
+        }
+        vo = String(v1.toFloat() / v2.toFloat());
+      } else {
+        vo = String(v1.toFloat() * v2.toFloat());
+      }
+      in = getFrontStr(in, lpos + 1) + vo + getChoppedStr(in, fpos, 0);
+    } else {
+      goto das;
+    }
+    goto dmd;
+das:
+    v1 = "";
+    gvn = 0;
+    bool s = false;
+    for (int i = 1; i < in.length(); i++) {
+      cchr = in.charAt(i);
+      if (cchr == '+') {
+        if (s) {
+          gvn -= v1.toFloat();
+        } else {
+          gvn += v1.toFloat();
+        }
+        s = false;
+        v1 = "";
+      } else if (cchr == '-') {
+        if (s) {
+          gvn -= v1.toFloat();
+        } else {
+          gvn += v1.toFloat();
+        }
+        s = true;
+        v1 = "";
+      } else {
+        v1 += cchr;
+      }
+    }
+    out = String(gvn);
   }
-  in = getFrontStr(in, in.length() - 1);
   //if (ap) {in = '(' + in + ')';}
   //if (isNumber && in == "") {in = "0.00";}
   gvt = isString;
@@ -858,7 +1006,7 @@ String getvar(String vn) {
   //Serial.println(vtype);
   if (vtype == 0) {
     if (getvart(vn, true) == 5) {
-      return """";
+      return "";
     } else {
       return "0.00";
     }
@@ -1144,7 +1292,7 @@ void printString(String s) {
   }
 }
 void printErr(byte e, String etxt) {
-  sicon(0); if (e > 8 || e < 0) {
+  sicon(0); if (e > 9 || e < 0) {
     e = 0;
   }
   switch (e) {
@@ -1174,6 +1322,9 @@ void printErr(byte e, String etxt) {
       break;
     case 8:
       printString(F("INVALID VARIABLE NAME"));
+      break;
+    case 9:
+      printString(F("DIVIDE BY ZERO"));
       break;
   }
   if (etxt != "") {
