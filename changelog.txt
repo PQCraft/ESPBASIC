@@ -1,3 +1,6 @@
+v0.0.0.20:
+  fixed bugs
+  added number interpreter
 v0.0.0.19:
   redid the string interpreter
 v0.0.0.18:
