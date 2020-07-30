@@ -1,3 +1,7 @@
+v0.0.0.21:
+  added variable making ability (VARIABLE=VALUE)
+  !: Known bug: Setting a number variable will crash the ESP-32 with "Guru Meditation Error: Core  1 panic'ed (LoadStoreError). Exception was unhandled."
+  fixed varible storage bugs
 v0.0.0.20:
   fixed bugs
   added number interpreter
