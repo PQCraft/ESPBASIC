@@ -155,28 +155,11 @@ void loop() {
   dummy();
 }
 void espbasic() {
-  //unsigned char pmem[16384];
-  /*char *line = (char *)malloc(2048);
-    if (line == NULL) {sicon(0); printErr(6, F("")); do {} while (true);}
-    mas = 163840;
-    long acs = 98303;
-    sicon(2);
-    printString(F("Finding free memory...\n   Chunk size: ")); printString(String(acs)); printString(F(" bytes\n"));
-    mrsv:
-    pms = mas;
-    Serial.println(mas);
-    Serial.println(pms);
-    char *pmem = (char *)malloc(mas);
-    if (mas <= 0) {sicon(0); printErr(6, F("")); do {} while (true);}
-    if (pmem == NULL) {mas = mas - (acs + 1); goto mrsv;}
-    sicon(2);
-    printString(F("Found ")); printString(String(mas)); printString(F(" byte(s)\n"));*/
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.20");
-  //mkvar("VER", 5, 0, "R.I.P.");
-  mkvar("REV", 5, 0, "Alpha");
+  mkvar("VER", 5, 0, "0.0.0.21");
+  mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
   //printString(getvar("E"));
@@ -193,12 +176,44 @@ void espbasic() {
     tcx = ltcx; tcy = ltcy; printString(line);
     printChar(13);
     lineString = line; lineString.trim();
+    int eqsign = findCharNIS(lineString , '=', 0);
+    if (eqsign != -1) {
+      nac = false;
+      String tmpvn = getFrontStr(lineString, eqsign);
+      tmpvn.trim();
+      if (!isValVN(tmpvn)) {
+        printErr(10, "VARIABLE NAME");
+        goto scd;
+      }
+      byte vt = getvart(tmpvn, false);
+      String gvop = getval(getChoppedStr(lineString, eqsign + 1, 0));
+      if (vt == 0) {
+        vt = gvt * 4 + 1;
+      }
+      if (gvt == (vt == 5)) {
+        if (gvt) {
+          delvar(tmpvn);
+          mkvar(tmpvn, vt, 0, gvop);
+        } else {
+          delvar(tmpvn);
+          mkvar(tmpvn, vt, gvn, "");
+        }
+      } else {
+        printErr(6, "");
+      }
+      goto scd;
+    }
     CMD = lineString + ' '; CMD.toUpperCase();
     ARG = getBackStr(lineString, CMD.indexOf(' ') + 1);
     ARG.trim();
-    CMD = getFrontStr(CMD, CMD.indexOf(' '));
-    //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
     nac = true;
+    CMD = getFrontStr(CMD, CMD.indexOf(' '));
+    if (ARG.charAt(0) == ',') {
+      nac = true;
+      printErr(5, "");
+      goto scd;
+    }
+    //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
     if (CMD == "") {
       nac = false;
     }
@@ -320,6 +335,7 @@ aib:
       cls();
       nac = false;
     }
+scd:
     if (nac) {
       printErr(3, CMD);
     }
@@ -368,6 +384,27 @@ void dummy() {
     }
   } while (true);
 }
+int getARGCount(String argstr) {
+
+}
+int findCharNIS(String sstr, char c, int pos) {
+  bool inString = false;
+  for (int i = 0; i < sstr.length(); i++) {
+    char cchr = sstr.charAt(i);
+    bool jcis = false;
+    if (cchr == '"' && inString) {
+      inString = false;
+      jcis = true;
+    }
+    if (!inString && cchr == c) {
+      return i;
+    }
+    if (cchr == '"' && !inString && !jcis) {
+      inString = true;
+    }
+  }
+  return -1;
+}
 void setvm(byte vm, bool sl) {
   String res = "";
   if (vm == 0) {
@@ -406,6 +443,8 @@ void pgve(String edat) {
     printErr(4, edat);
   } else if (gve == 5) {
     printErr(9, "");
+  } else if (gve == 6) {
+    printErr(10, edat);
   }
 }
 void SND_setVol(byte ch, byte nv) {
@@ -641,10 +680,28 @@ rachk:
         }
         in = getFrontStr(in, fcp) + gvhv + getChoppedStr(in, i, 0);
       } else if (isAlphaNumeric(fchr) && lchr == ')') {
-        in = getFrontStr(in, fcp) + getfunc(cbfr) + getChoppedStr(in, i, 0);
+        if (cbfr.indexOf('(') == -1) {
+          gve = 1;
+          return "";
+        }
+        String gfhv = getfunc(cbfr);
         if (gfe > 0) {
-          gve = 4;
-          return getFrontStr(cbfr, cbfr.indexOf('('));
+          gve = gfe;
+          return gfhv;
+        }
+        if (isNumber && gft == 1) {
+          gve = 2;
+          return "";
+        }
+        if (isString && gft == 0) {
+          gve = 2;
+          return "";
+        }
+        if (gft == 1) {
+          gfhv = '"' + gfhv + '"';
+          isString = true;
+        } else {
+          isNumber = true;
         }
       } else if (isValVN(cbfr)) {
         if (getvart(cbfr, true) == 5) {
@@ -688,10 +745,9 @@ rachk:
   if (isString) {
     inString = false;
     //bool inChar = false;
-    bool jcis = false;
     for (int i = 0; i < in.length(); i++) {
       cchr = in.charAt(i);
-      jcis = false;
+      bool jcis = false;
       if (cchr == '"' && inString) {
         inString = false;
         jcis = true;
@@ -712,6 +768,10 @@ rachk:
       if (cchr == '"' && !inString && !jcis) {
         inString = true;
       }
+    }
+    if (inString || inPrnth) {
+      gve = 1;
+      return "";
     }
     in = getFrontStr(in, in.length() - 1);
   } else {
@@ -742,7 +802,7 @@ nc1:
         lpos--;
         goto nc1;
       }
-      vo = String(pow(v1.toFloat(), v2.toFloat()));
+      vo = String(pow(v1.toFloat(), v2.toFloat()), DEC);
       in = getFrontStr(in, lpos + 1) + vo + getChoppedStr(in, fpos, 0);
     } else {
       goto dmd;
@@ -752,22 +812,15 @@ dmd:
     int p1 = in.indexOf('*');
     int p2 = in.indexOf('/');
     opos = -1;
-    bool pn = p1 != -1 && p2 != -1;
+    //bool pn = p1 != -1 && p2 != -1;
     bool d = false;
-    if (pn) {
-      if (p1 < p2) {
-        opos = p1;
-        d = false;
-      } else if (p2 < p1) {
-        opos = p2;
-        d = true;
-      }
+    if (p1 == -1 && p2 == -1) {
+      goto das;
     } else {
-      if (p1 != -1) {
+      if (p1 < p2 && p1 != -1) {
         opos = p1;
         d = false;
-      }
-      if (p2 != -1) {
+      } else {
         opos = p2;
         d = true;
       }
@@ -797,9 +850,9 @@ nc3:
           gve = 5;
           return "";
         }
-        vo = String(v1.toFloat() / v2.toFloat());
+        vo = String(v1.toFloat() / v2.toFloat(), DEC);
       } else {
-        vo = String(v1.toFloat() * v2.toFloat());
+        vo = String(v1.toFloat() * v2.toFloat(), DEC);
       }
       in = getFrontStr(in, lpos + 1) + vo + getChoppedStr(in, fpos, 0);
     } else {
@@ -832,7 +885,19 @@ das:
         v1 += cchr;
       }
     }
-    out = String(gvn);
+    out = String(round(gvn * 100000) / 100000, DEC);
+    out = getFrontStr(out, out.indexOf('.') + 6);
+    for (int i = out.length() - 1; i >= 0; i--) {
+      cchr = out.charAt(i);
+      if (cchr == '0') {
+        out = getFrontStr(out, i);
+      } else if (cchr == '.') {
+        out = getFrontStr(out, i);
+        i = -1;
+      } else {
+        i = -1;
+      }
+    }
   }
   //if (ap) {in = '(' + in + ')';}
   //if (isNumber && in == "") {in = "0.00";}
@@ -842,11 +907,14 @@ das:
 }
 String getfunc(String fstr) {
   String FUNC = getFrontStr(fstr, fstr.indexOf('('));
-  String FARG = getMidStr(fstr, fstr.indexOf('('), fstr.lastIndexOf(')'));
+  String FARG = getChoppedStr(fstr, fstr.indexOf('(') + 1, 1);
   FUNC.toUpperCase();
-  //Serial.println(FUNC);
-  gfe = 1;
-  return "";
+  FARG.trim();
+  bool naf = true;
+  if (naf) {
+    gfe = 4;
+    return FUNC;
+  }
 }
 /*bool getfunct(String str) {
   return false;
@@ -947,7 +1015,7 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
      4 == float
      5 == string
   */
-  unsigned int vl;
+  int vl;
   switch (t) {
     case 1:
       vl = 2;
@@ -965,21 +1033,33 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
       vl = vstr.length();
       break;
   }
-  unsigned int vsize = vn.length() + vl + 5;
-  long srchofst;
-  int za;
-  char chold;
+  int vsize = vn.length() + vl + 5;
+  //long srchofst;
+  //int za;
+  //char chold;
   pmp = vmp - vsize;
+  long ovp = -1;
   vmp = pmp;
-  for (long i = vmp; i < pms; i++) {
-    srchofst = 0;
-    do {
-      chold = pmem[i] + srchofst;
-      srchofst++;
-    } while (chold == 0);
-    if (srchofst > vsize) {
-      pmp = i;
+  long tpmp = pmp;
+  bool dnsovp = true;
+  for (long i = pmp; i < pms; i++) {
+    int tmpsize = 0;
+    for (int j = 0; j < vsize; j++) {
+      //Serial.println(String(i, DEC) + ", " + String(j, DEC) + ", " + String(pmem[i + j], DEC));
+      if (pmem[i + j] == 0) {
+        tmpsize++;
+      }
     }
+    //Serial.println(String(tmpsize, DEC) + ", " + String(vsize, DEC) + ", " + String(i, DEC));
+    if (tmpsize == vsize) {
+      pmp = i;
+    } else if (dnsovp) {
+      ovp = i + vsize - 1;
+      dnsovp = false;
+    }
+  }
+  if (ovp < pmp) {
+    vmp = ovp;
   }
   //Serial.print(F("srchofst: ")); Serial.println(String(srchofst, DEC)); Serial.print(F("vsize: ")); Serial.println(String(vsize, DEC));
   //Serial.print(F("pmp: ")); Serial.println(String(pmp, DEC));
@@ -992,12 +1072,16 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
   } else {
     pmWStr(vstr); pmWChr(0);
   }
-  //for (long i = vmp; i < pms; i++) {Serial.println(String(i, DEC) + ": " + String(pmem[i], DEC));};
+  while (pmem[vmp] == 0) {
+    vmp++;
+  }/*
+  for (long i = vmp; i < pms; i++) {
+    Serial.println(String(i, DEC) + ": " + String(pmem[i], DEC));
+  };*/
   return true;
 }
 String getvar(String vn) {
   //Serial.println("getvar");
-  vn.toUpperCase();
   long vpos = findvar(vn, vmp);
   if (vpos == -1) {
     return "";
@@ -1021,20 +1105,30 @@ String getvar(String vn) {
   }
   return vval;
 }
+void setvar(String vn, String sv, float nv) {
+  delvar(vn);
+  mkvar(vn, getvart(vn, true), nv, sv);
+}
 void delvar(String vn) {
-  vn.toUpperCase();
   long vpos = findvar(vn, vmp);
   if (vpos > -1) {
-    long vdp = vpos; //+ vn.length() + 3;
-    while (pmem[vdp] != 0) {
-      vdp++;
-      pmem[vdp] = 0;
+    long lpos = vpos + vn.length();
+    long vlen = (256 * pmem[lpos + 1]) + pmem[lpos + 2];
+    //Serial.println(String(vlen, DEC));
+    int wl = vn.length() + vlen + 4;
+    pmp = vpos;
+    //Serial.println("delvar: " + vn);
+    for (int i = 0; i <= wl; i++) {
+      //Serial.println("dv: " + String(pmp, DEC) + ", " + String(pmem[pmp], DEC));
+      pmWChr(0);
+    }
+    while (pmem[vmp] == 0) {
+      vmp++;
     }
   }
 }
 int getvart(String vn, bool at) {
   //Serial.println("getvart");
-  vn.toUpperCase(); vn.trim();
   if (isValVN(vn)) {
     long vpos = findvar(vn, vmp);
     if (vpos != -1) {
@@ -1102,22 +1196,30 @@ long findCharRevPM(char fc, long pos) {
 long findvar(String fvn, long pos) {
   //Serial.println("findvar");
   //Serial.println(fvn);
+  fvn.toUpperCase(); fvn.trim();
   String vbfr = "";
   char cvchr = 0;
   long fvpos = pos;
+  bool indat = false;
   for (long i = pos; i < pms - 1; i++) {
     cvchr = pmem[i];
     //Serial.println(String(i, DEC) + ", " + String(cvchr, DEC) + ", " + vbfr);
     if (cvchr == 0) {
-      if (vbfr == fvn) {
-        return fvpos;
+      if (indat) {
+        if (vbfr == fvn) {
+          return fvpos;
+        } else {
+          i += (256 * pmem[i + 1]) + pmem[i + 2] + 4 ;
+          fvpos = i + 1;
+          vbfr = "";
+          indat = false;
+        }
       } else {
-        i += (256 * pmem[i + 1]) + pmem[i + 2] + 4 ;
         fvpos = i + 1;
-        vbfr = "";
       }
     } else {
       vbfr += cvchr;
+      indat = true;
     }
   }
   return -1;
@@ -1292,7 +1394,7 @@ void printString(String s) {
   }
 }
 void printErr(byte e, String etxt) {
-  sicon(0); if (e > 9 || e < 0) {
+  sicon(0); if (e > 10  || e < 0) {
     e = 0;
   }
   switch (e) {
@@ -1325,6 +1427,9 @@ void printErr(byte e, String etxt) {
       break;
     case 9:
       printString(F("DIVIDE BY ZERO"));
+      break;
+    case 10:
+      printString(F("INVALID VALUE"));
       break;
   }
   if (etxt != "") {
