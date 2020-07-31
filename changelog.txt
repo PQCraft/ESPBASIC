@@ -1,4 +1,6 @@
 Beta:
+v0.0.0.23:
+  bug fixes
 v0.0.0.22:
   fixed number interpreter bug that made calculating negative numbers impossible
   added BASIC command: COLOR (COLOR fgc [, bgc])
