@@ -57,6 +57,7 @@ byte          gfe = 0;
 byte          gft = 0;
 byte          vlines = 0;
 byte          vclmns = 0;
+byte          gaerr = 0;
 int ltcx;
 int ltcy;
 //#define EBVER "0.0.0.0";
@@ -158,7 +159,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.22");
+  mkvar("VER", 5, 0, "0.0.0.23");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -208,12 +209,12 @@ void espbasic() {
     ARG = getBackStr(lineString, CMD.indexOf(' ') + 1);
     ARG.trim();
     nac = true;
-    CMD = getFrontStr(CMD, CMD.indexOf(' '));
+    CMD = getFrontStr(CMD, CMD.indexOf(' '));/*
     if (ARG.charAt(0) == ',') {
       nac = true;
       printErr(5, "");
       goto scd;
-    }
+    }*/
     gvhold = "";
     //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
     if (CMD == "") {
@@ -228,7 +229,7 @@ void espbasic() {
       nac = false;
     }
     if (CMD == "CLS") {
-      nac = true;
+      nac = false;
       if (getARGCount(ARG) > 1) {
         printErr(10, "ARGUMENT COUNT");
         goto clserr;
@@ -236,6 +237,14 @@ void espbasic() {
         gvhold = getval(getARG(ARG, 1));
         if (gve > 0) {
           pgve(gvhold);
+          goto clserr;
+        }
+        if (gaerr > 0) {
+          gve = gaerr;
+          pgve(gvhold);
+          goto clserr;
+        }
+        if (gvhold == "") {
           goto clserr;
         }
         if (gvt != 0) {
@@ -295,44 +304,62 @@ clserr:
           inString = true;
         }
       }
+      if (inString) {
+        printErr(5, "");
+      }
 perr:
       printChar(0);
     }
     if (CMD == "COLOR") {
-      nac = true;
+      nac = false;
       if (getARGCount(ARG) > 2 || getARGCount(ARG) < 1) {
         printErr(10, "ARGUMENT COUNT");
-        goto clrerr;
+        goto cerr;
       } else {
         gvhold = getval(getARG(ARG, 1));
+        Serial.println("gvh: " + gvhold);
         if (gve > 0) {
           pgve(gvhold);
-          goto clrerr;
+          goto cerr;
+        }
+        if (gaerr > 0) {
+          gve = gaerr;
+          pgve(gvhold);
+          goto cerr;
+        }
+        if (gvhold == "") {
+          goto cbgc;
         }
         if (gvt != 0) {
           printErr(6, "");
-          goto clrerr;
+          goto cerr;
         }
         setFGColor(byte(gvn));
+cbgc:
         gvhold = getval(getARG(ARG, 2));
-        if (gvhold == "") {
-          goto clrerr;
-        }
         if (gve > 0) {
           pgve(gvhold);
-          goto clrerr;
+          goto cerr;
+        }
+        if (gaerr > 0) {
+          gve = gaerr;
+          pgve(gvhold);
+          goto cerr;
+        }
+        if (gvhold == "") {
+          goto cerr;
         }
         if (gvt != 0) {
           printErr(6, "");
-          goto clrerr;
+          goto cerr;
         }
         setBGColor(byte(gvn));
       }
-clrerr:
+cerr:
       nac = false;
     }
     if (CMD == "VMODE") {
-      nac = true;
+      nac = false;
       if (getARGCount(ARG) != 1) {
         printErr(10, "ARGUMENT COUNT");
         goto screrr;
@@ -423,15 +450,17 @@ void dummy() {
   } while (true);
 }
 String getARG(String argstr, int apos) {
+  gaerr = 0;
   argstr.trim();
   if (argstr == "") {
     return "";
   }
   argstr += ',';
   int anum = 0;
-  int fargp = 0;
+  int fargp = -1;
   int largp = 0;
   bool inString = false;
+  bool inPrnth = false;
   for (int i = 0; i < argstr.length(); i++) {
     char cchr = argstr.charAt(i);
     bool jcis = false;
@@ -439,29 +468,41 @@ String getARG(String argstr, int apos) {
       inString = false;
       jcis = true;
     }
-    if (!inString && cchr == ',') {
+    if (cchr == ')' && inPrnth) {
+      inPrnth = false;
+    }
+    if (!inString && !inPrnth && cchr == ',') {
       anum++;
       if (anum == apos - 1) {
-        fargp = i + 1;
+        fargp = i;
       } else if (anum == apos) {
         largp = i;
       }
+    }
+    if (cchr == '(' && !inPrnth) {
+      inPrnth = true;
     }
     if (cchr == '"' && !inString && !jcis) {
       inString = true;
     }
   }
+  if (inString) {
+    gaerr = 1;
+    return "";
+  }
   if (largp == 0 || largp < fargp) {
     return "";
   } else {
-    String argout = getMidStr(argstr, fargp, largp - 1);
+    String argout = getMidStr(argstr, fargp + 1, largp - 1);
     argout.trim();
     return argout;
   }
 }
 int getARGCount(String argstr) {
+  gaerr = 0;
   int argct = 1;
   argstr.trim();
+  //argstr += ',';
   if (argstr == "") {
     return 0;
   }
@@ -479,6 +520,10 @@ int getARGCount(String argstr) {
     if (cchr == '"' && !inString && !jcis) {
       inString = true;
     }
+  }
+  if (inString) {
+    gaerr = 1;
+    return 0;
   }
   return argct;
 }
@@ -705,19 +750,20 @@ String getval(String in) {
   bool isNumber = false;
   bool inPrnth  = false;
   bool fnn = false;
+  Serial.println("getval: " + in);
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
     bool jcis = false;
-    bool jcip = false;
-    if (cchr == '"' && inString && !inPrnth) {
-      inString = false;
+    //bool jcip = false;
+    if (cchr == '"' && !inString) {
+      inString = true;
       jcis = true;
     }
-    if (cchr == ')' && inPrnth && !inString) {
-      inPrnth = false;
-      jcip = true;
+    if (cchr == '(' && !inPrnth && !inString) {
+      inPrnth = true;
+      //jcip = true;
     }
-    if (cchr == 39 && !inString) {
+    if (cchr == 39 && !inString && false) {
       cbfr += cchr;
 rachk:
       i++;
@@ -839,13 +885,14 @@ rachk:
       //fnn = false;
     }
 svd:
-    if (cchr == '(' && !jcis && !inPrnth) {
-      inPrnth = true;
+    if (cchr == ')' && inPrnth && !inString) {
+      inPrnth = false;
     }
-    if (cchr == 39 && !jcip && !inString) {
-      inString = true;
+    if (cchr == '"' && inString && !jcis) {
+      inString = false;
     }
   }
+  Serial.println("getval: " + String(inString, DEC) + String(inPrnth, DEC));
   if (inString || inPrnth) {
     gve = 1;
     return "";
@@ -1204,7 +1251,7 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
     int tmpsize = 0;
     for (int j = 0; j < vsize; j++) {
       //Serial.println(String(i, DEC) + ", " + String(j, DEC) + ", " + String(pmem[i + j], DEC));
-      if (pmem[i + j] == 0) {
+      if (pmem[i + j] == 0 && pmem[i + j - 1] == 0) {
         tmpsize++;
       }
     }
@@ -1232,10 +1279,10 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
   }
   while (pmem[vmp] == 0) {
     vmp++;
-  }/*
+  }
   for (long i = vmp; i < pms; i++) {
     Serial.println(String(i, DEC) + ": " + String(pmem[i], DEC));
-  };*/
+  }
   return true;
 }
 String getvar(String vn) {
