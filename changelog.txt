@@ -1,10 +1,20 @@
+Beta:
+v0.0.0.22:
+  fixed number interpreter bug that made calculating negative numbers impossible
+  added BASIC command: COLOR (COLOR fgc [, bgc])
+  changed syntax of BASIC command CLS (accepts an optional color value)
+  changed syntax of BASIC command PRINT (PRINT VALUE/VALUE$ -> PRINT VALUE/VALUE$ [,/; VALUE/VALUE$ ...])
+  i: I plan on adding the ability to put more that one command on a line separated by ':'
 v0.0.0.21:
   added variable making ability (VARIABLE=VALUE)
   !: Known bug: Setting a number variable will crash the ESP-32 with "Guru Meditation Error: Core  1 panic'ed (LoadStoreError). Exception was unhandled."
   fixed varible storage bugs
+  added memory saving routine (Though it is not fast, it works. I plan on adding some options to this when the SYS command is added.)
 v0.0.0.20:
   fixed bugs
   added number interpreter
+  moved from alpha to beta
+Alpha:
 v0.0.0.19:
   redid the string interpreter
 v0.0.0.18:
