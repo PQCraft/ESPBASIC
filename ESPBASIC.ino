@@ -129,7 +129,7 @@ void setup() {
       SND_setCHType(3, 4);
       goto pbt;
     }
-  } while (timer() < 1500);
+  } while (timer() < 1000);
   goto cwb;
 pbt:
   SND_playNote(0, 349.23, 0);
@@ -158,7 +158,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.21");
+  mkvar("VER", 5, 0, "0.0.0.22");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -169,6 +169,7 @@ void espbasic() {
   String lineString;
   String CMD;
   String ARG;
+  String gvhold = "";
   bool nac = true;
   tcm = 1;
   do {
@@ -213,6 +214,7 @@ void espbasic() {
       printErr(5, "");
       goto scd;
     }
+    gvhold = "";
     //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
     if (CMD == "") {
       nac = false;
@@ -226,32 +228,138 @@ void espbasic() {
       nac = false;
     }
     if (CMD == "CLS") {
-      cls(); locate(0, 0);
+      nac = true;
+      if (getARGCount(ARG) > 1) {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      } else {
+        gvhold = getval(getARG(ARG, 1));
+        if (gve > 0) {
+          pgve(gvhold);
+          goto clserr;
+        }
+        if (gvt != 0) {
+          printErr(6, "");
+          goto clserr;
+        }
+        byte tbgc = bgc;
+        if (gvhold != "") {
+          setBGColor(byte(gvn));
+        }
+        cls();
+        setBGColor(tbgc);
+        locate(0, 0);
+      }
+clserr:
       nac = false;
     }
     if (CMD == "PRINT" || CMD == "?") {
-      if (ARG != "") {
-        bool dpnlc = true;
-        dpnlc = (ARG.charAt(ARG.length() - 1) == ';');
-        if (dpnlc) {
-          ARG = getFrontStr(ARG, ARG.length() - 1);
-          if (ARG.length() == 0) {
-            goto aib;
-          }
-        }
-        String printStr = getval(ARG);
-        if (gve > 0) {
-          pgve(printStr);
-        } else {
-          printString(printStr);
-          if (!dpnlc) {
-            printChar(13);
-          }
-        }
-      } else {
-        printChar(13);
+      nac = false;
+      bool inString = false;
+      String pcbfr = "";
+      if (ARG.charAt(ARG.length() - 1) == ',') {
+        printErr(5, "");
+        goto perr;
+      } else if (ARG.charAt(ARG.length() - 1) != ';') {
+        ARG += ',';
       }
-aib:
+      for (int i = 0; i < ARG.length(); i++) {
+        char cchr = ARG.charAt(i);
+        bool jcis = false;
+        if (cchr == '"' && inString) {
+          inString = false;
+          jcis = true;
+        }
+        if (!inString && cchr == ',') {
+          pcbfr = getval(pcbfr);
+          if (gve == 0) {
+            printString(pcbfr + '\n');
+          } else {
+            pgve(pcbfr);
+            break;
+          }
+          pcbfr = "";
+        } else if (!inString && cchr == ';') {
+          pcbfr = getval(pcbfr);
+          if (gve == 0) {
+            printString(pcbfr);
+          } else {
+            pgve(pcbfr);
+            break;
+          }
+          pcbfr = "";
+        } else {
+          pcbfr += cchr;
+        }
+        if (cchr == '"' && !inString && !jcis) {
+          inString = true;
+        }
+      }
+perr:
+      printChar(0);
+    }
+    if (CMD == "COLOR") {
+      nac = true;
+      if (getARGCount(ARG) > 2 || getARGCount(ARG) < 1) {
+        printErr(10, "ARGUMENT COUNT");
+        goto clrerr;
+      } else {
+        gvhold = getval(getARG(ARG, 1));
+        if (gve > 0) {
+          pgve(gvhold);
+          goto clrerr;
+        }
+        if (gvt != 0) {
+          printErr(6, "");
+          goto clrerr;
+        }
+        setFGColor(byte(gvn));
+        gvhold = getval(getARG(ARG, 2));
+        if (gvhold == "") {
+          goto clrerr;
+        }
+        if (gve > 0) {
+          pgve(gvhold);
+          goto clrerr;
+        }
+        if (gvt != 0) {
+          printErr(6, "");
+          goto clrerr;
+        }
+        setBGColor(byte(gvn));
+      }
+clrerr:
+      nac = false;
+    }
+    if (CMD == "VMODE") {
+      nac = true;
+      if (getARGCount(ARG) != 1) {
+        printErr(10, "ARGUMENT COUNT");
+        goto screrr;
+      } else {
+        gvhold = getval(getARG(ARG, 1));
+        if (gve > 0) {
+          pgve(gvhold);
+          goto screrr;
+        }
+        if (gvt != 0) {
+          printErr(6, "");
+          goto screrr;
+        }
+        if (gvn >= 0 && gvn <= 2) {
+          setvm(byte(gvn), false);
+          cls();
+          locate(0, 0);
+        } else if (gvn >= 3 && gvn <= 5) {
+          setvm(byte(gvn) - 3, true);
+          cls();
+          locate(0, 0);
+        } else {
+          printErr(10, "VIDEO MODE");
+          goto screrr;
+        }
+      }
+screrr:
       nac = false;
     }
     if (CMD == "MEMORY" || CMD == "MEM") {
@@ -262,85 +370,15 @@ aib:
       printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
     }
-    if (CMD == "SNDTEST") {
-      unsigned long stdelay = timer() + 5000;
-      printString("Testing sound...\n");
-      SND_setCHType(0, 0);
-      SND_setCHType(1, 1);
-      SND_setCHType(2, 2);
-      SND_setCHType(3, 3);
-      for (byte i = 0; i < 4; i++) {
-        for (int j = 160; j <= 1600; j++) {
-          SND_playNote(i, j, 0);
-          delay(5);
-          //SQW[0].setFrequency(j);
-        }
-        delay(5);
-        rfSND();
-      }
-      nac = false;
-    }
-    // Comment the next line to omit the extra commands.
-#include "FunCMDs.h";
+    // Uncomment the next line to omit the extra commands.
+    //#include "FunCMDs.h";
     //     ^^^^^^^^^^^^^
-    if (CMD == "CPU40") {
-      setCpuFrequencyMhz(40);
-      nac = false;
-    }
-    if (CMD == "CPU80") {
-      setCpuFrequencyMhz(80);
-      nac = false;
-    }
-    if (CMD == "CPU160") {
-      setCpuFrequencyMhz(160);
-      nac = false;
-    }
-    if (CMD == "CPU240") {
-      setCpuFrequencyMhz(240);
-      nac = false;
-    }
-    if (CMD == "VMODE0") {
-      locate(0, 0);
-      setvm(0, false);
-      cls();
-      nac = false;
-    }
-    if (CMD == "VMODE1") {
-      locate(0, 0);
-      setvm(1, false);
-      cls();
-      nac = false;
-    }
-    if (CMD == "VMODE2") {
-      locate(0, 0);
-      setvm(2, false);
-      cls();
-      nac = false;
-    }
-    if (CMD == "VMODE3") {
-      locate(0, 0);
-      setvm(0, true);
-      cls();
-      nac = false;
-    }
-    if (CMD == "VMODE4") {
-      locate(0, 0);
-      setvm(1, true);
-      cls();
-      nac = false;
-    }
-    if (CMD == "VMODE5") {
-      locate(0, 0);
-      setvm(2, true);
-      cls();
-      nac = false;
-    }
 scd:
     if (nac) {
       printErr(3, CMD);
     }
   } while (!exitBASIC);
-  do {} while (true);
+  while (true) {};
 }
 void dummy() {
   tcm = 1;
@@ -384,8 +422,65 @@ void dummy() {
     }
   } while (true);
 }
+String getARG(String argstr, int apos) {
+  argstr.trim();
+  if (argstr == "") {
+    return "";
+  }
+  argstr += ',';
+  int anum = 0;
+  int fargp = 0;
+  int largp = 0;
+  bool inString = false;
+  for (int i = 0; i < argstr.length(); i++) {
+    char cchr = argstr.charAt(i);
+    bool jcis = false;
+    if (cchr == '"' && inString) {
+      inString = false;
+      jcis = true;
+    }
+    if (!inString && cchr == ',') {
+      anum++;
+      if (anum == apos - 1) {
+        fargp = i + 1;
+      } else if (anum == apos) {
+        largp = i;
+      }
+    }
+    if (cchr == '"' && !inString && !jcis) {
+      inString = true;
+    }
+  }
+  if (largp == 0 || largp < fargp) {
+    return "";
+  } else {
+    String argout = getMidStr(argstr, fargp, largp - 1);
+    argout.trim();
+    return argout;
+  }
+}
 int getARGCount(String argstr) {
-
+  int argct = 1;
+  argstr.trim();
+  if (argstr == "") {
+    return 0;
+  }
+  bool inString = false;
+  for (int i = 0; i < argstr.length(); i++) {
+    char cchr = argstr.charAt(i);
+    bool jcis = false;
+    if (cchr == '"' && inString) {
+      inString = false;
+      jcis = true;
+    }
+    if (!inString && cchr == ',') {
+      argct++;
+    }
+    if (cchr == '"' && !inString && !jcis) {
+      inString = true;
+    }
+  }
+  return argct;
 }
 int findCharNIS(String sstr, char c, int pos) {
   bool inString = false;
@@ -609,6 +704,7 @@ String getval(String in) {
   bool isString = false;
   bool isNumber = false;
   bool inPrnth  = false;
+  bool fnn = false;
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
     bool jcis = false;
@@ -625,6 +721,10 @@ String getval(String in) {
       cbfr += cchr;
 rachk:
       i++;
+      if (i > in.length()) {
+        gve = 1;
+        return "";
+      }
       cchr = in.charAt(i);
       if (cchr != 39) {
         cbfr += cchr;
@@ -634,10 +734,22 @@ rachk:
       i++;
       cchr = in.charAt(i);
     }
+    //if (cchr == '-' && !inString) {
+    //  fnn = true;
+    //}
     if (isOp(cchr) && !inString && !inPrnth) {
-      if (cbfr == "") {
-        gve = 1;
-        return "";
+      //if (in.charAt(i + 1) == '-') {
+      //  fnn = true;
+      //}
+      cbfr.trim();
+      if (cbfr == "" || cbfr == "-") {
+        if (cchr == '-' && cbfr.charAt(0) != '-') {
+          cbfr += cchr;
+          goto svd;
+        } else {
+          gve = 1;
+          return "";
+        }
       }
       int inoldlen = in.length();
       cbfr.trim();
@@ -724,7 +836,9 @@ rachk:
       fcp = i + 1;
     } else {
       cbfr += cchr;
+      //fnn = false;
     }
+svd:
     if (cchr == '(' && !jcis && !inPrnth) {
       inPrnth = true;
     }
@@ -783,21 +897,35 @@ rachk:
     int opos = -1;
     int fpos = -1;
     int lpos = -1;
+    bool sns = false;
 dep:
     opos = in.indexOf('^');
     if (opos != -1) {
+      v1 = "";
+      v2 = "";
       fpos = opos + 1;
 nc2:
+      sns = false;
       cchr = in.charAt(fpos);
-      if (!isOp(cchr)) {
+      if (cchr == '-' && !isOp(in.charAt(fpos - 1))) {
+        sns = true;
+      }
+      ////Serial.println(String(fpos, DEC) + ", " + String(cchr, DEC) +  ": " + cchr +  ", " + String(sns, DEC));
+      if (!(cchr == '+' || cchr == '*' || cchr == '/' || cchr == '^') && !sns) {
         v2 += cchr;
         fpos++;
         goto nc2;
       }
       lpos = opos - 1;
 nc1:
+      //dn = false;
+      sns = false;
+      cchr = in.charAt(fpos);
+      if (cchr == '-' && isOp(in.charAt(fpos - 1))) {
+        sns = true;
+      }
       cchr = in.charAt(lpos);
-      if (!isOp(cchr)) {
+      if (!isOp(cchr) && (!sns || cchr != '-')) {
         v1 = cchr + v1;
         lpos--;
         goto nc1;
@@ -814,15 +942,26 @@ dmd:
     opos = -1;
     //bool pn = p1 != -1 && p2 != -1;
     bool d = false;
+    //bool dn = false;
     if (p1 == -1 && p2 == -1) {
       goto das;
     } else {
-      if (p1 < p2 && p1 != -1) {
-        opos = p1;
-        d = false;
+      if (p1 > -1 && p2 > -1) {
+        if (p1 < p2) {
+          opos = p1;
+          d = false;
+        } else if (p2 < p1) {
+          opos = p2;
+          d = true;
+        }
       } else {
-        opos = p2;
-        d = true;
+        if (p1 != -1) {
+          opos = p1;
+          d = false;
+        } else {
+          opos = p2;
+          d = true;
+        }
       }
     }
     if (opos != -1) {
@@ -830,21 +969,32 @@ dmd:
       v2 = "";
       fpos = opos + 1;
 nc4:
+      sns = false;
       cchr = in.charAt(fpos);
-      if (!isOp(cchr)) {
+      if (cchr == '-' && !isOp(in.charAt(fpos - 1))) {
+        sns = true;
+      }
+      ////Serial.println(String(fpos, DEC) + ", " + String(cchr, DEC) +  ": " + cchr +  ", " + String(sns, DEC));
+      if (!(cchr == '+' || cchr == '*' || cchr == '/' || cchr == '^') && !sns) {
         v2 += cchr;
         fpos++;
         goto nc4;
       }
       lpos = opos - 1;
 nc3:
+      //dn = false;
+      sns = false;
+      cchr = in.charAt(fpos);
+      if (cchr == '-' && isOp(in.charAt(fpos - 1))) {
+        sns = true;
+      }
       cchr = in.charAt(lpos);
-      if (!isOp(cchr)) {
+      if (!isOp(cchr) && (!sns || cchr != '-')) {
         v1 = cchr + v1;
         lpos--;
         goto nc3;
       }
-      //Serial.println(v1+", "+v2);
+      //Serial.println(v1 + ", " + v2);
       if (d) {
         if (v2.toFloat() == 0) {
           gve = 5;
@@ -860,9 +1010,11 @@ nc3:
     }
     goto dmd;
 das:
+    //Serial.println(in);
     v1 = "";
     gvn = 0;
     bool s = false;
+    bool jfss = false;
     for (int i = 1; i < in.length(); i++) {
       cchr = in.charAt(i);
       if (cchr == '+') {
@@ -874,15 +1026,21 @@ das:
         s = false;
         v1 = "";
       } else if (cchr == '-') {
-        if (s) {
-          gvn -= v1.toFloat();
+        if (jfss) {
+          s = !s;
         } else {
-          gvn += v1.toFloat();
+          if (s) {
+            gvn -= v1.toFloat();
+          } else {
+            gvn += v1.toFloat();
+          }
+          s = true;
         }
-        s = true;
+        jfss = true;
         v1 = "";
       } else {
         v1 += cchr;
+        jfss = false;
       }
     }
     out = String(round(gvn * 100000) / 100000, DEC);
