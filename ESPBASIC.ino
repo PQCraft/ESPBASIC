@@ -58,8 +58,9 @@ byte          gft = 0;
 byte          vlines = 0;
 byte          vclmns = 0;
 byte          gaerr = 0;
-int ltcx;
-int ltcy;
+int           ltcx = 0;
+int           ltcy = 0;
+bool          cmderr = false;
 //#define EBVER "0.0.0.0";
 //#define EBREV "";
 
@@ -159,7 +160,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.23");
+  mkvar("VER", 5, 0, "0.0.0.24");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -167,24 +168,75 @@ void espbasic() {
   printString(String(pms, DEC) + F(" bytes total.\n"));
   printString(String(getFreePM(), DEC) + F(" bytes free.\n"));
   bool exitBASIC = false;
+  String inLine = "";
   String lineString;
   String CMD;
   String ARG;
   String gvhold = "";
   bool nac = true;
+  int fcpos = 0;
+  int lcpos = -1;
+  int dfcpos[16];
+  int dlcpos[16];
+  int dcpos = 0;
+  byte dcpp = -1;
+  int eqsign = -1;
+  for (byte i = 0; i < 16; i++) {
+    dfcpos[i] = 0;
+    dlcpos[i] = 0;
+  }
   tcm = 1;
   do {
-    prompt(">");
-    tcx = ltcx; tcy = ltcy; printString(line);
-    printChar(13);
-    lineString = line; lineString.trim();
-    int eqsign = findCharNIS(lineString , '=', 0);
+cmdchk:
+    rfKB();
+    if (chr == 3 || cmderr) {
+      inLine = "";
+    }
+    if (inLine == "") {
+      /*
+        if (dcpp != -1) {
+          printErr(5, "");
+        }
+        cmderr = false;*/
+      prompt(">");
+      tcx = ltcx; tcy = ltcy; printString(line);
+      printChar(13);
+      inLine = line;
+      //inLine.trim();
+      //lineString = line; lineString.trim();
+      inLine += ':';
+      fcpos = 0;
+      lcpos = -1;
+    }
+    //Serial.println("-----");
+    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpos, DEC));
+    dcpos = fcpos;
+    fcpos = lcpos + 1;
+    lcpos = findCharNIS(inLine, ':', fcpos);
+    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpos, DEC));
+    if (lcpos == -1) {
+      inLine = "";
+      lineString = inLine;
+      goto cmdchk;
+    } else {
+      lineString = getMidStr(inLine, fcpos, lcpos - 1);
+      //inLine =
+    }
+    if (gaerr > 0) {
+      gve = gaerr;
+      pgve(gvhold);
+      goto scd;
+      nac = false;
+    }
+    lineString.trim();
+    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpos, DEC));
+    eqsign = findCharNIS(lineString , '=', 0);
     if (eqsign != -1) {
       nac = false;
       String tmpvn = getFrontStr(lineString, eqsign);
       tmpvn.trim();
       if (!isValVN(tmpvn)) {
-        printErr(10, "VARIABLE NAME");
+        printErr(8, "");
         goto scd;
       }
       byte vt = getvart(tmpvn, false);
@@ -216,7 +268,10 @@ void espbasic() {
       goto scd;
     }*/
     gvhold = "";
-    //if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {ARG = getBackStr(lineString, lineString.indexOf(' '));}
+    if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {
+      ARG = getBackStr(lineString, lineString.indexOf(' '));
+    }
+    //if (
     if (CMD == "") {
       nac = false;
     }
@@ -245,6 +300,8 @@ void espbasic() {
           goto clserr;
         }
         if (gvhold == "") {
+          cls();
+          locate(0, 0);
           goto clserr;
         }
         if (gvt != 0) {
@@ -317,7 +374,7 @@ perr:
         goto cerr;
       } else {
         gvhold = getval(getARG(ARG, 1));
-        Serial.println("gvh: " + gvhold);
+        //Serial.println("gvh: " + gvhold);
         if (gve > 0) {
           pgve(gvhold);
           goto cerr;
@@ -334,6 +391,7 @@ perr:
           printErr(6, "");
           goto cerr;
         }
+        fgc = byte(gvn);
         setFGColor(byte(gvn));
 cbgc:
         gvhold = getval(getARG(ARG, 2));
@@ -353,6 +411,7 @@ cbgc:
           printErr(6, "");
           goto cerr;
         }
+        bgc = byte(gvn);
         setBGColor(byte(gvn));
       }
 cerr:
@@ -396,6 +455,26 @@ screrr:
     if (CMD == "SYSINFO" || CMD == "SYSINF") {
       printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
+    }
+    if (CMD == "DO") {
+      nac = false;
+      //Serial.println(String(fcpos, DEC) + ", " + String(lcpos, DEC));
+      dcpp++;
+      dfcpos[dcpp] = fcpos;
+      //dlcpos[dcpp] = dcpos;
+    }
+    if (CMD == "LOOP") {
+      nac = false;
+      if (dcpp == -1) {
+        printErr(5, "");
+      } else {
+        //Serial.println(String(fcpos, DEC) + ", " + String(lcpos, DEC));
+        lcpos = dfcpos[dcpp] - 1;
+        //lcpos = dlcpos[dcpp];
+        //Serial.println(String(fcpos, DEC) + ", " + String(lcpos, DEC));
+        dcpp--;
+        //lineString = getMidStr(inLine, fcpos, lcpos - 1);
+      }
     }
     // Uncomment the next line to omit the extra commands.
     //#include "FunCMDs.h";
@@ -528,20 +607,32 @@ int getARGCount(String argstr) {
   return argct;
 }
 int findCharNIS(String sstr, char c, int pos) {
+  gaerr = 0;
   bool inString = false;
-  for (int i = 0; i < sstr.length(); i++) {
+  bool inPrnth = false;
+  for (int i = pos; i < sstr.length(); i++) {
     char cchr = sstr.charAt(i);
     bool jcis = false;
     if (cchr == '"' && inString) {
       inString = false;
       jcis = true;
     }
+    if (cchr == ')' && !inString && inPrnth) {
+      inPrnth = false;
+    }
     if (!inString && cchr == c) {
       return i;
+    }
+    if (cchr == '(' && !inString && !inPrnth) {
+      inPrnth = true;
     }
     if (cchr == '"' && !inString && !jcis) {
       inString = true;
     }
+  }
+  if (inString) {
+    gaerr = 1;
+    return -1;
   }
   return -1;
 }
@@ -1599,9 +1690,11 @@ void printString(String s) {
   }
 }
 void printErr(byte e, String etxt) {
-  sicon(0); if (e > 10  || e < 0) {
+  sicon(0);
+  if (e > 10  || e < 0) {
     e = 0;
   }
+  cmderr = true;
   switch (e) {
     case 0:
       printString(F("UNKNOWN ERROR"));
