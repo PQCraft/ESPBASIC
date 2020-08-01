@@ -1,4 +1,9 @@
 Beta:
+v0.0.0.24:
+  bug fixes
+  added BASIC command: DO
+  added BASIC command: LOOP
+  added multi-command lines (commands are separated by ':')
 v0.0.0.23:
   bug fixes
 v0.0.0.22:
