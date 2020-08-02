@@ -787,7 +787,7 @@ void prompt(String pt) {
   while (true) {
     rfKB();
     if (chr == 13) {
-      line[lp + 1] = 0;
+      line[noc] = 0;
       return;
     }
     if (chr == 3) {
@@ -1643,34 +1643,34 @@ void drawCursor(int x, int y) {
   }
 }
 unsigned char getbfrc(byte xp, byte yp) {
-  if (tbp > vlines) {
+  if (tbp >= vlines) {
     tbp = 0;
   }
   if (tbp < 0) {
-    tbp = vlines;
+    tbp = vlines - 1;
   }
   yp = yp + tbp;
-  if (yp > vlines) {
+  if (yp >= vlines) {
     yp = yp - vlines;
   }
   return tbfr[yp][xp];
 }
 void setbfrc(byte xp, byte yp, char wchar) {
-  if (tbp > vlines) {
+  if (tbp >= vlines) {
     tbp = 0;
   }
   if (tbp < 0) {
-    tbp = vlines;
+    tbp = vlines - 1;
   }
   yp = yp + tbp;
-  if (yp > vlines) {
+  if (yp >= vlines) {
     yp = yp - vlines;
   }
   tbfr[yp][xp] = wchar;
 }
 void cbfrcln() {
   for (byte i = 0; i < vclmns; i++) {
-    setbfrc(i, vlines, 0);
+    setbfrc(i, vlines - 1, 0);
   }
 }
 unsigned long sec() {
