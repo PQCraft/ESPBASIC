@@ -1,4 +1,6 @@
 Beta:
+v0.0.0.25:
+  bug fixes
 v0.0.0.24:
   bug fixes
   added BASIC command: DO
