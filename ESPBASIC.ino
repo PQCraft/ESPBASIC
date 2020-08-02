@@ -34,7 +34,7 @@ int           tcy;
 bool          tcm;
 int           chr;
 int           tbp;
-char          tbfr[48][40];
+char          tbfr[48][50];
 //char          pmem[1];
 bool          ctlkey;
 bool          altkey;
@@ -72,6 +72,8 @@ void setup() {
   VGA.begin();
   //VGA.setResolution(QVGA_320x240_60Hz);
   //VGA.setResolution(VGA_400x300_60Hz);
+  setvm(3, false);
+  setvm(3, true);
   setvm(2, false);
   //vMode(1);
   cls();
@@ -160,7 +162,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.24");
+  mkvar("VER", 5, 0, "0.0.0.25");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -177,13 +179,13 @@ void espbasic() {
   int fcpos = 0;
   int lcpos = -1;
   int dfcpos[16];
-  int dlcpos[16];
+  //int dlcpos[16];
   int dcpos = 0;
-  byte dcpp = -1;
+  int dcpp = -1;
   int eqsign = -1;
   for (byte i = 0; i < 16; i++) {
     dfcpos[i] = 0;
-    dlcpos[i] = 0;
+    //dlcpos[i] = 0;
   }
   tcm = 1;
   do {
@@ -199,6 +201,7 @@ cmdchk:
         }
         cmderr = false;*/
       prompt(">");
+      cmderr = false;
       tcx = ltcx; tcy = ltcy; printString(line);
       printChar(13);
       inLine = line;
@@ -207,13 +210,17 @@ cmdchk:
       inLine += ':';
       fcpos = 0;
       lcpos = -1;
+      for (int i = 0; i < 16; i++) {
+        dfcpos[i] = 0;
+      }
+      dcpp = -1;
     }
     //Serial.println("-----");
-    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpos, DEC));
+    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpp, DEC));
     dcpos = fcpos;
     fcpos = lcpos + 1;
     lcpos = findCharNIS(inLine, ':', fcpos);
-    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpos, DEC));
+    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpp, DEC));
     if (lcpos == -1) {
       inLine = "";
       lineString = inLine;
@@ -229,7 +236,7 @@ cmdchk:
       nac = false;
     }
     lineString.trim();
-    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpos, DEC));
+    //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpp, DEC));
     eqsign = findCharNIS(lineString , '=', 0);
     if (eqsign != -1) {
       nac = false;
@@ -322,6 +329,7 @@ clserr:
     if (CMD == "PRINT" || CMD == "?") {
       nac = false;
       bool inString = false;
+      int inPrnth = 0;
       String pcbfr = "";
       if (ARG.charAt(ARG.length() - 1) == ',') {
         printErr(5, "");
@@ -332,11 +340,14 @@ clserr:
       for (int i = 0; i < ARG.length(); i++) {
         char cchr = ARG.charAt(i);
         bool jcis = false;
-        if (cchr == '"' && inString) {
+        if (cchr == '"' && inString && inPrnth == 0) {
           inString = false;
           jcis = true;
         }
-        if (!inString && cchr == ',') {
+        if (cchr == ')' && !inString) {
+          inPrnth--;
+        }
+        if (!inString && !inPrnth && cchr == ',') {
           pcbfr = getval(pcbfr);
           if (gve == 0) {
             printString(pcbfr + '\n');
@@ -357,11 +368,14 @@ clserr:
         } else {
           pcbfr += cchr;
         }
-        if (cchr == '"' && !inString && !jcis) {
+        if (cchr == '(' && !inString) {
+          inPrnth++;
+        }
+        if (cchr == '"' && !inString && !jcis && inPrnth == 0) {
           inString = true;
         }
       }
-      if (inString) {
+      if (inString || inPrnth != 0) {
         printErr(5, "");
       }
 perr:
@@ -432,12 +446,12 @@ cerr:
           printErr(6, "");
           goto screrr;
         }
-        if (gvn >= 0 && gvn <= 2) {
+        if (gvn >= 0 && gvn <= 3) {
           setvm(byte(gvn), false);
           cls();
           locate(0, 0);
-        } else if (gvn >= 3 && gvn <= 5) {
-          setvm(byte(gvn) - 3, true);
+        } else if (gvn >= 4 && gvn <= 7) {
+          setvm(byte(gvn) - 4, true);
           cls();
           locate(0, 0);
         } else {
@@ -539,18 +553,18 @@ String getARG(String argstr, int apos) {
   int fargp = -1;
   int largp = 0;
   bool inString = false;
-  bool inPrnth = false;
+  int inPrnth = 0;
   for (int i = 0; i < argstr.length(); i++) {
     char cchr = argstr.charAt(i);
     bool jcis = false;
-    if (cchr == '"' && inString) {
+    if (cchr == '"' && inString && inPrnth == 0) {
       inString = false;
       jcis = true;
     }
-    if (cchr == ')' && inPrnth) {
-      inPrnth = false;
+    if (cchr == ')' && !inString) {
+      inPrnth--;
     }
-    if (!inString && !inPrnth && cchr == ',') {
+    if (!inString && inPrnth == 0 && cchr == ',') {
       anum++;
       if (anum == apos - 1) {
         fargp = i;
@@ -558,14 +572,14 @@ String getARG(String argstr, int apos) {
         largp = i;
       }
     }
-    if (cchr == '(' && !inPrnth) {
-      inPrnth = true;
+    if (cchr == '(' && !inString) {
+      inPrnth++;
     }
-    if (cchr == '"' && !inString && !jcis) {
+    if (cchr == '"' && !inString && !jcis && inPrnth == 0) {
       inString = true;
     }
   }
-  if (inString) {
+  if (inString || inPrnth != 0) {
     gaerr = 1;
     return "";
   }
@@ -586,21 +600,28 @@ int getARGCount(String argstr) {
     return 0;
   }
   bool inString = false;
+  int inPrnth = 0;
   for (int i = 0; i < argstr.length(); i++) {
     char cchr = argstr.charAt(i);
     bool jcis = false;
-    if (cchr == '"' && inString) {
+    if (cchr == '"' && inString && inPrnth == 0) {
       inString = false;
       jcis = true;
     }
-    if (!inString && cchr == ',') {
+    if (cchr == ')' && !inString) {
+      inPrnth--;
+    }
+    if (!inString && inPrnth == 0 && cchr == ',') {
       argct++;
     }
-    if (cchr == '"' && !inString && !jcis) {
+    if (cchr == '(' && !inString) {
+      inPrnth++;
+    }
+    if (cchr == '"' && !inString && !jcis && inPrnth == 0) {
       inString = true;
     }
   }
-  if (inString) {
+  if (inString || inPrnth != 0) {
     gaerr = 1;
     return 0;
   }
@@ -609,24 +630,24 @@ int getARGCount(String argstr) {
 int findCharNIS(String sstr, char c, int pos) {
   gaerr = 0;
   bool inString = false;
-  bool inPrnth = false;
+  int inPrnth = 0;
   for (int i = pos; i < sstr.length(); i++) {
     char cchr = sstr.charAt(i);
     bool jcis = false;
-    if (cchr == '"' && inString) {
+    if (cchr == '"' && inString && inPrnth == 0) {
       inString = false;
       jcis = true;
     }
-    if (cchr == ')' && !inString && inPrnth) {
-      inPrnth = false;
+    if (cchr == ')' && !inString) {
+      inPrnth--;
     }
-    if (!inString && cchr == c) {
+    if (!inString && inPrnth == 0 && cchr == c) {
       return i;
     }
-    if (cchr == '(' && !inString && !inPrnth) {
-      inPrnth = true;
+    if (cchr == '(' && !inString) {
+      inPrnth++;
     }
-    if (cchr == '"' && !inString && !jcis) {
+    if (cchr == '"' && !inString && !jcis && inPrnth == 0) {
       inString = true;
     }
   }
@@ -650,6 +671,10 @@ void setvm(byte vm, bool sl) {
     res = QVGA_320x240_60Hz;
     vlines = 30;
     vclmns = 40;
+  } else if (vm == 3) {
+    res = VGA_400x300_60Hz;
+    vlines = 37;
+    vclmns = 50;
   }
   if (sl) {
     res += " MultiScanBlank";
@@ -759,8 +784,18 @@ void prompt(String pt) {
   int ttcy;
   int noc = 0;
   printString(pt); ltcx = tcx; ltcy = tcy; lp = 0; noc = 0; sc = 0;
-  do {
+  while (true) {
     rfKB();
+    if (chr == 13) {
+      line[lp + 1] = 0;
+      return;
+    }
+    if (chr == 3) {
+      for (long i = 0; i < 2047; i++) {
+        line[i] = 0;
+      }
+      return;
+    }
     drawCursor(tcx, tcy);
     if (chr == 8 && lp > 0) {
       noc--;
@@ -821,7 +856,7 @@ void prompt(String pt) {
         ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
       }
     }
-  } while (chr != 13);
+  }
 }
 String getval(String in) {
   String out = "";
@@ -839,19 +874,19 @@ String getval(String in) {
   bool inString = false;
   bool isString = false;
   bool isNumber = false;
-  bool inPrnth  = false;
+  int inPrnth = 0;
   bool fnn = false;
-  Serial.println("getval: " + in);
+  //Serial.println("getval: " + in);
   for (int i = 0; i < in.length(); i++) {
     cchr = in.charAt(i);
     bool jcis = false;
     //bool jcip = false;
-    if (cchr == '"' && !inString) {
+    if (cchr == '"' && !inString && inPrnth == 0) {
       inString = true;
       jcis = true;
     }
-    if (cchr == '(' && !inPrnth && !inString) {
-      inPrnth = true;
+    if (cchr == '(' && !inString) {
+      inPrnth++;
       //jcip = true;
     }
     if (cchr == 39 && !inString && false) {
@@ -874,7 +909,7 @@ rachk:
     //if (cchr == '-' && !inString) {
     //  fnn = true;
     //}
-    if (isOp(cchr) && !inString && !inPrnth) {
+    if (isOp(cchr) && !inString && inPrnth == 0) {
       //if (in.charAt(i + 1) == '-') {
       //  fnn = true;
       //}
@@ -930,10 +965,11 @@ rachk:
         in = getFrontStr(in, fcp) + gvhv + getChoppedStr(in, i, 0);
       } else if (isAlphaNumeric(fchr) && lchr == ')') {
         if (cbfr.indexOf('(') == -1) {
-          gve = 1;
+          gve = 2;
           return "";
         }
         String gfhv = getfunc(cbfr);
+        //Serial.println(gfhv);
         if (gfe > 0) {
           gve = gfe;
           return gfhv;
@@ -947,11 +983,12 @@ rachk:
           return "";
         }
         if (gft == 1) {
-          gfhv = '"' + gfhv + '"';
+          //gfhv = '"' + gfhv + '"';
           isString = true;
         } else {
           isNumber = true;
         }
+        in = getFrontStr(in, fcp) + gfhv + getChoppedStr(in, i, 0);
       } else if (isValVN(cbfr)) {
         if (getvart(cbfr, true) == 5) {
           isString = true;
@@ -976,15 +1013,15 @@ rachk:
       //fnn = false;
     }
 svd:
-    if (cchr == ')' && inPrnth && !inString) {
-      inPrnth = false;
+    if (cchr == ')' && !inString) {
+      inPrnth--;
     }
-    if (cchr == '"' && inString && !jcis) {
+    if (cchr == '"' && inString && !jcis && inPrnth == 0) {
       inString = false;
     }
   }
-  Serial.println("getval: " + String(inString, DEC) + String(inPrnth, DEC));
-  if (inString || inPrnth) {
+  //Serial.println("getval: " + String(inString, DEC) + String(inPrnth, DEC));
+  if (inString || inPrnth != 0) {
     gve = 1;
     return "";
   }
@@ -1202,10 +1239,54 @@ das:
   return out;
 }
 String getfunc(String fstr) {
+  gfe = 0;
   String FUNC = getFrontStr(fstr, fstr.indexOf('('));
   String FARG = getChoppedStr(fstr, fstr.indexOf('(') + 1, 1);
+  //Serial.println(FUNC);
+  //Serial.println(FARG);
+  int AC = getARGCount(FARG);
   FUNC.toUpperCase();
   FARG.trim();
+  if (FUNC == "RND") {
+    randomSeed(timer());
+    if (AC > 2) {
+      gfe = 6;
+      return "ARGUMENT COUNT";
+    }
+    int n1 = 0;
+    getval(getARG(FARG, 1));
+    if (gvt != 0) {
+      gfe = 2;
+      return "";
+    }
+    int n2 = gvn;
+    if (AC == 2) {
+      n1 = n2;
+      getval(getARG(FARG, 2));
+      if (gvt != 0) {
+        gfe = 2;
+        return "";
+      }
+      n2 = gvn;
+    }
+    //Serial.println(String(rn, DEC));
+    gft = 0;
+    return String(random(n1, n2 + 1), DEC) + "";
+  }
+  if (FUNC == "CHR$") {
+    if (AC != 1) {
+      gfe = 6;
+      return "ARGUMENT COUNT";
+    }
+    getval(getARG(FARG, 1));
+    if (gvt != 0) {
+      gfe = 2;
+      return "";
+    }
+    char cout[4] = {39, gvn, 39, 0};
+    gft = 1;
+    return cout;
+  }
   bool naf = true;
   if (naf) {
     gfe = 4;
@@ -1370,10 +1451,10 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
   }
   while (pmem[vmp] == 0) {
     vmp++;
-  }
+  }/*
   for (long i = vmp; i < pms; i++) {
     Serial.println(String(i, DEC) + ": " + String(pmem[i], DEC));
-  }
+  }*/
   return true;
 }
 String getvar(String vn) {
@@ -1562,34 +1643,34 @@ void drawCursor(int x, int y) {
   }
 }
 unsigned char getbfrc(byte xp, byte yp) {
-  if (tbp > vlines - 1) {
+  if (tbp > vlines) {
     tbp = 0;
   }
   if (tbp < 0) {
-    tbp = vlines - 1;
+    tbp = vlines;
   }
   yp = yp + tbp;
-  if (yp > vlines - 1) {
+  if (yp > vlines) {
     yp = yp - vlines;
   }
   return tbfr[yp][xp];
 }
 void setbfrc(byte xp, byte yp, char wchar) {
-  if (tbp > vlines - 1) {
+  if (tbp > vlines) {
     tbp = 0;
   }
   if (tbp < 0) {
-    tbp = vlines - 1;
+    tbp = vlines;
   }
   yp = yp + tbp;
-  if (yp > vlines - 1) {
+  if (yp > vlines) {
     yp = yp - vlines;
   }
   tbfr[yp][xp] = wchar;
 }
 void cbfrcln() {
   for (byte i = 0; i < vclmns; i++) {
-    setbfrc(i, vlines - 1, 0);
+    setbfrc(i, vlines, 0);
   }
 }
 unsigned long sec() {
@@ -1662,16 +1743,16 @@ void printChar(char c) {
   }
   if (tcx < 0 && tcy > 0) {
     tcy--;
-    tcx = tcx + VGA.getScreenWidth() / 8;
+    tcx = tcx + vclmns;
   }
   if (tcx < 0 && tcy <= 0) {
     tcx++;
   }
-  if (tcx >= VGA.getScreenWidth() / 8)  {
+  if (tcx >= vclmns)  {
     tcx = 0;
     tcy++;
   }
-  if (tcy >= VGA.getScreenHeight() / 8 && !noscroll) {
+  if (tcy >= vlines && !noscroll) {
     tcy--;
     GFX.scroll(0, -8);
     tbp++;

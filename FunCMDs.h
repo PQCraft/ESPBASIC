@@ -1,4 +1,4 @@
-// ESPBASIC eXtra commands v0.0.0.24
+// ESPBASIC eXtra commands v0.0.0.25
 ///*
 //Uncomment this section to enable the crash command
 if (CMD == "CRASH") {
