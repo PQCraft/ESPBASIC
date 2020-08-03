@@ -3,6 +3,7 @@ v0.0.0.26:
   bug fixes
   added BASIC command: SOUND (can also be accessed using SND)
   added BASIC command: DELAY
+  fixed prompt newline glitch
 v0.0.0.25:
   bug fixes
 v0.0.0.24:
