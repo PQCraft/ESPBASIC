@@ -162,7 +162,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.25");
+  mkvar("VER", 5, 0, "0.0.0.26");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -183,6 +183,7 @@ void espbasic() {
   int dcpos = 0;
   int dcpp = -1;
   int eqsign = -1;
+  int ARGCT = 0;
   for (byte i = 0; i < 16; i++) {
     dfcpos[i] = 0;
     //dlcpos[i] = 0;
@@ -191,15 +192,11 @@ void espbasic() {
   do {
 cmdchk:
     rfKB();
+    rfSND();
     if (chr == 3 || cmderr) {
       inLine = "";
     }
     if (inLine == "") {
-      /*
-        if (dcpp != -1) {
-          printErr(5, "");
-        }
-        cmderr = false;*/
       prompt(">");
       cmderr = false;
       tcx = ltcx; tcy = ltcy; printString(line);
@@ -220,6 +217,14 @@ cmdchk:
     dcpos = fcpos;
     fcpos = lcpos + 1;
     lcpos = findCharNIS(inLine, ':', fcpos);
+    //Serial.println(String(gaerr, DEC));
+    if (gaerr > 0) {
+      gve = gaerr;
+      pgve(gvhold);
+      gve = 0;
+      nac = false;
+      goto scd;
+    }
     //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpp, DEC));
     if (lcpos == -1) {
       inLine = "";
@@ -229,15 +234,16 @@ cmdchk:
       lineString = getMidStr(inLine, fcpos, lcpos - 1);
       //inLine =
     }
-    if (gaerr > 0) {
-      gve = gaerr;
-      pgve(gvhold);
-      goto scd;
-      nac = false;
-    }
     lineString.trim();
     //Serial.println(inLine + ", " + lineString + ", " + String(fcpos, DEC) + ", " + String(lcpos, DEC) + ", " + String(dcpp, DEC));
     eqsign = findCharNIS(lineString , '=', 0);
+    if (gaerr > 0) {
+      gve = gaerr;
+      pgve(gvhold);
+      gve = 0;
+      nac = false;
+      goto scd;
+    }
     if (eqsign != -1) {
       nac = false;
       String tmpvn = getFrontStr(lineString, eqsign);
@@ -275,20 +281,28 @@ cmdchk:
       goto scd;
     }*/
     gvhold = "";
+    ARGCT = getARGCount(ARG);
     if (lineString.indexOf(' ') > -1 && lineString.indexOf(' ') == CMD.indexOf(' ')) {
       ARG = getBackStr(lineString, lineString.indexOf(' '));
     }
-    //if (
     if (CMD == "") {
       nac = false;
     }
     if (CMD == "RESET") {
-      ESP.restart();
       nac = false;
+      if (ARG != "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      }
+      ESP.restart();
     }
     if (CMD == "DUMMY") {
-      dummy();
       nac = false;
+      if (ARG != "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      }
+      dummy();
     }
     if (CMD == "CLS") {
       nac = false;
@@ -347,7 +361,8 @@ clserr:
         if (cchr == ')' && !inString) {
           inPrnth--;
         }
-        if (!inString && !inPrnth && cchr == ',') {
+        //Serial.println(String(inString, DEC) + ", " + String(inPrnth, DEC));
+        if (!inString && inPrnth == 0 && cchr == ',') {
           pcbfr = getval(pcbfr);
           if (gve == 0) {
             printString(pcbfr + '\n');
@@ -356,7 +371,7 @@ clserr:
             break;
           }
           pcbfr = "";
-        } else if (!inString && cchr == ';') {
+        } else if (!inString && inPrnth == 0 && cchr == ';') {
           pcbfr = getval(pcbfr);
           if (gve == 0) {
             printString(pcbfr);
@@ -431,9 +446,112 @@ cbgc:
 cerr:
       nac = false;
     }
+    if (CMD == "DELAY") {
+      nac = false;
+      if (ARGCT > 1 || ARG == "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto screrr;
+      }
+      gvhold = getval(getARG(ARG, 1));
+      long tmptimer = timer() + gvn;
+      if (gve > 0) {
+        pgve(gvhold);
+        goto dlyerr;
+      }
+      if (gvt != 0) {
+        printErr(6, "");
+        goto dlyerr;
+      }
+      while (timer() < tmptimer) {
+        rfKB();
+        rfSND();
+        if (chr == 3) {
+          inLine = "";
+          break;
+        }
+      }
+      dlyerr:
+      nac = false;
+    }
+    if (CMD == "SOUND" || CMD == "SND") {
+      nac = false;
+      byte sc = 0;
+      int  sf = 0;
+      int  sd = 0;
+      if (ARGCT < 3 || ARGCT > 5) {
+        printErr(10, "ARGUMENT COUNT");
+        goto snderr;
+      }
+      gvhold = getval(getARG(ARG, 1));
+      if (gve > 0) {
+        pgve(gvhold);
+        goto snderr;
+      }
+      if (gvt != 0) {
+        printErr(6, "");
+        goto snderr;
+      }
+      sc = gvn;
+      if (sc > 3 || sc < 0) {
+        printErr(10, "SOUND CHANNEL");
+        goto snderr;
+      }
+      gvhold = getval(getARG(ARG, 2));
+      if (gve > 0) {
+        pgve(gvhold);
+        goto snderr;
+      }
+      if (gvt != 0) {
+        printErr(6, "");
+        goto snderr;
+      }
+      sf = gvn;
+      gvhold = getval(getARG(ARG, 3));
+      if (gve > 0) {
+        pgve(gvhold);
+        goto snderr;
+      }
+      if (gvt != 0) {
+        printErr(6, "");
+        goto snderr;
+      }
+      sd = gvn;
+      gvhold = getval(getARG(ARG, 4));
+      if (gve > 0) {
+        pgve(gvhold);
+        goto snderr;
+      }
+      if (gvt != 0) {
+        printErr(6, "");
+        goto snderr;
+      }
+      if (gvhold != "") {
+        SND_setVol(sc, byte(gvn));
+      }
+      gvhold = getval(getARG(ARG, 5));
+      if (gve > 0) {
+        pgve(gvhold);
+        goto snderr;
+      }
+      if (gvt != 0) {
+        printErr(6, "");
+        goto snderr;
+      }
+      if (gvhold != "") {
+        SND_setCHType(sc, byte(gvn));
+      }
+      if (sf > 0 && sd > 0) {
+        SND_playNote(sc, sf, sd);
+      } else {
+        SND_playNote(sc, 0, 0);
+      }
+      rfSND();
+      snderr:
+      nac = false;
+    }
     if (CMD == "VMODE") {
       nac = false;
-      if (getARGCount(ARG) != 1) {
+      if (ARGCT != 1) {
         printErr(10, "ARGUMENT COUNT");
         goto screrr;
       } else {
@@ -463,15 +581,27 @@ screrr:
       nac = false;
     }
     if (CMD == "MEMORY" || CMD == "MEM") {
-      printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
       nac = false;
+      if (ARG != "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      }
+      printString(String(pms, DEC) + F(" bytes total, ") + String(getFreePM(), DEC) + F(" bytes free.\n"));
     }
     if (CMD == "SYSINFO" || CMD == "SYSINF") {
-      printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
       nac = false;
+      if (ARG != "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      }
+      printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
     }
     if (CMD == "DO") {
       nac = false;
+      if (ARG != "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      }
       //Serial.println(String(fcpos, DEC) + ", " + String(lcpos, DEC));
       dcpp++;
       dfcpos[dcpp] = fcpos;
@@ -479,6 +609,10 @@ screrr:
     }
     if (CMD == "LOOP") {
       nac = false;
+      if (ARG != "") {
+        printErr(10, "ARGUMENT COUNT");
+        goto clserr;
+      }
       if (dcpp == -1) {
         printErr(5, "");
       } else {
@@ -651,7 +785,7 @@ int findCharNIS(String sstr, char c, int pos) {
       inString = true;
     }
   }
-  if (inString) {
+  if (inString || inPrnth != 0) {
     gaerr = 1;
     return -1;
   }
@@ -704,6 +838,7 @@ void pgve(String edat) {
   }
 }
 void SND_setVol(byte ch, byte nv) {
+  bitWrite(nv, 7, 0);
   SQW[ch].setVolume(nv);
   TRI[ch].setVolume(nv);
   SWT[ch].setVolume(nv);
@@ -786,6 +921,7 @@ void prompt(String pt) {
   printString(pt); ltcx = tcx; ltcy = tcy; lp = 0; noc = 0; sc = 0;
   while (true) {
     rfKB();
+    rfSND();
     if (chr == 13) {
       line[noc] = 0;
       return;
@@ -840,13 +976,13 @@ void prompt(String pt) {
       tcx = ltcx; tcy = ltcy; printString(line); ltcy = ltcy - sc; sc = 0; lp = noc;
     }
     if (chr > 31 && chr < 127 && lp < 2048) {
-      ltcy = ltcy - sc; sc = 0;
       if (tcm) {
         line[lp] = chr;
         printChar(chr);
         if (lp == noc) {
           noc++;
         } lp++;
+        //ltcy = ltcy - sc;
       } else {
         noc++;
         for (int i = 2047; i > lp; i--) {
@@ -855,8 +991,12 @@ void prompt(String pt) {
         ttcx = tcx; ttcy = tcy; tcx = ltcx; tcy = ltcy; printString(line); tcx = ttcx; tcy = ttcy - sc;
         ltcy = ltcy - sc; lp++; printChar(255); sc = 0;
       }
+      ltcy = ltcy - sc; sc = 0;
     }
   }
+}
+bool gettest(String tstin) {
+
 }
 String getval(String in) {
   String out = "";
@@ -1245,6 +1385,7 @@ String getfunc(String fstr) {
   //Serial.println(FUNC);
   //Serial.println(FARG);
   int AC = getARGCount(FARG);
+  String gvfhold = "";
   FUNC.toUpperCase();
   FARG.trim();
   if (FUNC == "RND") {
@@ -1254,7 +1395,11 @@ String getfunc(String fstr) {
       return "ARGUMENT COUNT";
     }
     int n1 = 0;
-    getval(getARG(FARG, 1));
+    gvfhold = getval(getARG(FARG, 1));
+    if (gve > 0) {
+      gfe = gve;
+      return gvfhold;
+    }
     if (gvt != 0) {
       gfe = 2;
       return "";
@@ -1262,7 +1407,11 @@ String getfunc(String fstr) {
     int n2 = gvn;
     if (AC == 2) {
       n1 = n2;
-      getval(getARG(FARG, 2));
+      gvfhold = getval(getARG(FARG, 2));
+      if (gve > 0) {
+        gfe = gve;
+        return gvfhold;
+      }
       if (gvt != 0) {
         gfe = 2;
         return "";
@@ -1278,9 +1427,16 @@ String getfunc(String fstr) {
       gfe = 6;
       return "ARGUMENT COUNT";
     }
-    getval(getARG(FARG, 1));
+    gvfhold = getval(getARG(FARG, 1));
+    if (gve > 0) {
+      gfe = gve;
+      return gvfhold;
+    }
     if (gvt != 0) {
       gfe = 2;
+      return "";
+    }
+    if (gvn == 0) {
       return "";
     }
     char cout[4] = {39, gvn, 39, 0};
