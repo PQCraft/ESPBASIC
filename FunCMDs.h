@@ -1,4 +1,4 @@
-// ESPBASIC eXtra commands v0.0.0.26
+// ESPBASIC eXtra commands v0.0.0.27
 ///*
 //Uncomment this section to enable the crash command
 if (CMD == "CRASH") {
@@ -12,7 +12,7 @@ if (CMD == "CRASH") {
 oof:
   randomSeed(timer());
   long rip;
-  while (true) {
+  while (chr != 3) {
     rip = random(-98304, 165940);
     rfKB();
     drawCursor(tcx, tcy);

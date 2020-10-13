@@ -1,9 +1,8 @@
-/*#include <Preferences.h>
-  #include <WiFi.h>
-  #include <HTTPClient.h>
-  #include "esp_spiffs.h"
-  #include "esp_task_wdt.h"
-  #include <stdio.h>*/
+//#include <Preferences.h>
+//#include <WiFi.h>
+//#include <HTTPClient.h>
+//#include "esp_spiffs.h"
+//#include "esp_task_wdt.h"
 #include "fabgl.h"
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -162,7 +161,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.26");
+  mkvar("VER", 5, 0, "0.0.0.27");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -470,7 +469,7 @@ cerr:
           break;
         }
       }
-      dlyerr:
+dlyerr:
       nac = false;
     }
     if (CMD == "SOUND" || CMD == "SND") {
@@ -546,7 +545,7 @@ cerr:
         SND_playNote(sc, 0, 0);
       }
       rfSND();
-      snderr:
+snderr:
       nac = false;
     }
     if (CMD == "VMODE") {
@@ -624,8 +623,8 @@ screrr:
         //lineString = getMidStr(inLine, fcpos, lcpos - 1);
       }
     }
-    // Uncomment the next line to omit the extra commands.
-    //#include "FunCMDs.h";
+    // Comment the next line to omit the extra commands.
+#include "FunCMDs.h";
     //     ^^^^^^^^^^^^^
 scd:
     if (nac) {
@@ -1358,7 +1357,7 @@ das:
         jfss = false;
       }
     }
-    out = String(round(gvn * 100000) / 100000, DEC);
+    out = String(round(gvn * 1000) / 1000, DEC);
     out = getFrontStr(out, out.indexOf('.') + 6);
     for (int i = out.length() - 1; i >= 0; i--) {
       cchr = out.charAt(i);
@@ -1599,7 +1598,7 @@ bool mkvar(String vn, byte t, float vlng, String vstr) {
   pmWStr(vn); pmWChr(0); pmWChr(highByte(vl)); pmWChr(lowByte(vl)); pmWChr(t);
   if (t != 5) {
     //int e;
-    for (byte i = vl - 1; i >= 0; i--) {
+    for (int i = vl - 1; i >= 0; i--) {
       pmWChr(getByte(vlng, i));
     }
   } else {
@@ -1625,16 +1624,32 @@ String getvar(String vn) {
     if (getvart(vn, true) == 5) {
       return "";
     } else {
-      return "0.00";
+      return "0.000";
     }
   }
   String vval;
-  if (vtype == 5) {
-    long vdp = vpos + vn.length() + 4;
-    while (pmem[vdp] != 0) {
-      vval += pmem[vdp];
-      vdp++;
-    }
+  long vdp = vpos + vn.length() + 4;
+  signed int vvalni = 0;
+  switch (int(vtype)) {
+    case 1:
+      vvalni = (pmem[vdp] << 8) + pmem[vdp + 1];
+      vvalni = vvalni - 65536 * bitRead(vvalni, 15);
+      vval = String(vvalni);
+      break;
+    case 2:
+      break;
+    case 3:
+      break;
+    case 4:
+      break;
+    case 5:
+      while (pmem[vdp] != 0) {
+        vval += pmem[vdp];
+        vdp++;
+      }
+      break;
+    default:
+      break;
   }
   return vval;
 }
@@ -1705,10 +1720,6 @@ byte getByte(long v, byte p) {
   p = p * 8;
   return bitRead(v, p + 0) + (bitRead(v, p + 1) * 2) + (bitRead(v, p + 2) * 4) + (bitRead(v, p + 3) * 8) + (bitRead(v, p + 4) * 16) + (bitRead(v, p + 5) * 32) + (bitRead(v, p + 6) * 64) + (bitRead(v, p + 7) * 128);
 }
-/*byte setByte(long v, byte p) {
-  p = p * 8;
-  return bitRead(v,p+0)+(bitRead(v,p+1)*2)+(bitRead(v,p+2)*4)+(bitRead(v,p+3)*8)+(bitRead(v,p+4)*16)+(bitRead(v,p+5)*32)+(bitRead(v,p+6)*64)+(bitRead(v,p+7)*128);
-  }*/
 long findCharPM(byte fc, long pos) {
   for (long i = pos; i < pms; i++) {
     if (pmem[i] == fc) {
