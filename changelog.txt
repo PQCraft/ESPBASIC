@@ -1,4 +1,8 @@
 Beta:
+v0.0.0.27:
+  fixed number variable store/recall
+  added integer number type
+  fixed weird omptimization-caused number wrapping bug
 v0.0.0.26:
   bug fixes
   added BASIC command: SOUND (can also be accessed using SND)
