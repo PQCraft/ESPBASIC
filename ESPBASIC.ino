@@ -41,7 +41,7 @@ int           tcy;
 bool          tcm;
 int           chr;
 int           tbp;
-char          tbfr[48][50];
+char          tbfr[60][80];
 //char          pmem[1];
 bool          ctlkey;
 bool          altkey;
@@ -49,7 +49,7 @@ bool          sftkey;
 //byte          sr;
 //byte          hr;
 long          pmp;
-long          mas = 65536;
+long          mas = 49152;
 long          pms = mas;
 //char          pmem[65536];
 char          *pmem = (char *)malloc(mas);
@@ -177,7 +177,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.28");
+  mkvar("VER", 5, 0, "0.0.0.29");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -579,12 +579,14 @@ snderr:
           printErr(6, "");
           goto screrr;
         }
-        if (gvn >= 0 && gvn <= 3) {
+        if (gvn >= 0 && gvn <= 6) {
+          if (gvn > 3 && !MODE16C) {printErr(7, "NOT IN 16 COLOR MODE"); goto screrr;}
           setvm(byte(gvn), false);
           cls();
           locate(0, 0);
-        } else if (gvn >= 4 && gvn <= 7) {
-          setvm(byte(gvn) - 4, true);
+        } else if (gvn >= 7 && gvn <= 13) {
+          if (gvn > 10 && !MODE16C) {printErr(7, "NOT IN 16 COLOR MODE"); goto screrr;}
+          setvm(byte(gvn) - 7, true);
           cls();
           locate(0, 0);
         } else {
@@ -808,22 +810,42 @@ int findCharNIS(String sstr, char c, int pos) {
 }
 void setvm(byte vm, bool sl) {
   String res = "";
-  if (vm == 0) {
-    res = VGA_256x384_60Hz;
-    vlines = 48;
-    vclmns = 32;
-  } else if (vm == 1) {
-    res = VGA_320x200_75Hz;
-    vlines = 25;
-    vclmns = 40;
-  } else if (vm == 2) {
-    res = QVGA_320x240_60Hz;
-    vlines = 30;
-    vclmns = 40;
-  } else if (vm == 3) {
-    res = VGA_400x300_60Hz;
-    vlines = 37;
-    vclmns = 50;
+  switch (vm) {
+    case 0:
+      res = VGA_256x384_60Hz;
+      vlines = 48;
+      vclmns = 32;
+      break;
+    case 1:
+      res = VGA_320x200_75Hz;
+      vlines = 25;
+      vclmns = 40;
+      break;
+    case 2:
+      res = QVGA_320x240_60Hz;
+      vlines = 30;
+      vclmns = 40;
+      break;
+    case 3:
+      res = VGA_400x300_60Hz;
+      vlines = 37;
+      vclmns = 50;
+      break;
+    case 4:
+      res = VGA_512x384_60Hz;
+      vlines = 48;
+      vclmns = 64;
+      break;
+    case 5:
+      res = VGA_640x400_70Hz;
+      vlines = 50;
+      vclmns = 80;
+      break;
+    case 6:
+      res = VGA_640x480_60Hz;
+      vlines = 60;
+      vclmns = 80;
+      break;
   }
   if (sl) {
     res += " MultiScanBlank";
@@ -1812,7 +1834,9 @@ void setFGColor(byte color) {
   fgc = color;
   if (MODE16C) {
     bool hclr = bitRead(color, 3);
-    if (color == 8) {GFX.setPenColor(64, 64, 64);} else {
+    if (color == 8) {
+      GFX.setPenColor(64, 64, 64);
+    } else {
       GFX.setPenColor(bitRead(color, 2) * 128 + bitRead(color, 2) * (hclr * 64), bitRead(color, 1) * 128 + bitRead(color, 1) * (hclr * 64), bitRead(color, 0) * 128 + bitRead(color, 0) * (hclr * 64));
     }
   } else {
@@ -1823,7 +1847,9 @@ void setBGColor(byte color) {
   bgc = color;
   if (MODE16C) {
     bool hclr = bitRead(color, 3);
-    if (color == 8) {GFX.setBrushColor(64, 64, 64);} else {
+    if (color == 8) {
+      GFX.setBrushColor(64, 64, 64);
+    } else {
       GFX.setBrushColor(bitRead(color, 2) * 128 + bitRead(color, 2) * (hclr * 64), bitRead(color, 1) * 128 + bitRead(color, 1) * (hclr * 64), bitRead(color, 0) * 128 + bitRead(color, 0) * (hclr * 64));
     }
   } else {
