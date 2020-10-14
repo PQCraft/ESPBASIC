@@ -1,4 +1,7 @@
 Beta:
+v0.0.0.28:
+  made floating point calculations as accurate as I could
+  added 16 color mode (default due to speed increase)
 v0.0.0.27:
   fixed number variable store/recall
   added integer number type
