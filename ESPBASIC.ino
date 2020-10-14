@@ -49,7 +49,7 @@ bool          sftkey;
 //byte          sr;
 //byte          hr;
 long          pmp;
-long          mas = 49152;
+long          mas = 65536; //49152;
 long          pms = mas;
 //char          pmem[65536];
 char          *pmem = (char *)malloc(mas);
