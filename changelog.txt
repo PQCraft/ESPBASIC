@@ -1,4 +1,6 @@
 Beta:
+v0.0.0.29:
+  added more hi-res video modes (must run in 16 colors and may have to change the ram size)
 v0.0.0.28:
   made floating point calculations as accurate as I could
   added 16 color mode (default due to speed increase)
