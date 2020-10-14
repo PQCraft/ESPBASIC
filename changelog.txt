@@ -1,6 +1,6 @@
 Beta:
 v0.0.0.29:
-  added more hi-res video modes (must run in 16 colors and may have to change the ram size)
+  added more hi-res video modes (must run in 16 colors and may have to change mas = 65536; to mas = 49152; to use vmode 6 and 13)
 v0.0.0.28:
   made floating point calculations as accurate as I could
   added 16 color mode (default due to speed increase)
@@ -8,6 +8,7 @@ v0.0.0.27:
   fixed number variable store/recall
   added integer number type
   fixed weird omptimization-caused number wrapping bug
+  now using VICNoiseGenerator instead of NoiseWaveformGenerator
 v0.0.0.26:
   bug fixes
   added BASIC command: SOUND (can also be accessed using SND)
