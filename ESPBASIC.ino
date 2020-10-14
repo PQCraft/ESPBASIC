@@ -11,7 +11,15 @@
 #include "esp32-hal-cpu.h"
 //Preferences preferences;
 
-fabgl::VGAController      VGA;
+//Change this to enable/disable 16 color mode
+#define MODE16C true
+//-------------------------------------------
+
+#if MODE16C
+fabgl::VGA16Controller  VGA;
+#else
+fabgl::VGAController    VGA;
+#endif
 fabgl::PS2Controller      PS2;
 fabgl::Canvas       GFX(&VGA);
 SoundGenerator            SND;
@@ -19,7 +27,7 @@ SquareWaveformGenerator   SQW[4];
 TriangleWaveformGenerator TRI[4];
 SawtoothWaveformGenerator SWT[4];
 SineWaveformGenerator     SNW[4];
-NoiseWaveformGenerator    NWV[4];
+VICNoiseGenerator         NWV[4];
 unsigned long            nDur[4];
 
 unsigned long tsv;
@@ -68,6 +76,14 @@ void setup() {
   Serial.begin(115200);
   PS2.begin(PS2Preset::KeyboardPort0);
   auto KB0 = PS2.keyboard();
+  //KB0 -> injectVirtualKey(fabgl::VK_NUMLOCK, true, false);
+  //rfKB();
+  //KB0 -> injectVirtualKey(fabgl::VK_NUMLOCK, false, false);
+  //rfKB();
+  if (MODE16C) {
+    fgc = 14;
+    bgc = 1;
+  }
   VGA.begin();
   //VGA.setResolution(QVGA_320x240_60Hz);
   //VGA.setResolution(VGA_400x300_60Hz);
@@ -161,7 +177,7 @@ void espbasic() {
   mas = pms;
   clrpmem();
   //pmem[pms - 1] = 255;
-  mkvar("VER", 5, 0, "0.0.0.27");
+  mkvar("VER", 5, 0, "0.0.0.28");
   mkvar("REV", 5, 0, "Beta");
   Serial.println(F("Started ESPBASIC"));
   printString("ESPBASIC v" + getvar("VER") + " r" + getvar("REV") + "\n");
@@ -978,9 +994,10 @@ void prompt(String pt) {
       if (tcm) {
         line[lp] = chr;
         printChar(chr);
-        if (lp == noc) {
+        if (lp >= noc) {
           noc++;
-        } lp++;
+        }
+        lp++;
         //ltcy = ltcy - sc;
       } else {
         noc++;
@@ -1357,7 +1374,8 @@ das:
         jfss = false;
       }
     }
-    out = String(round(gvn * 1000) / 1000, DEC);
+    //out = String(round(gvn * 1000) / 1000, DEC);
+    out = String(gvn, DEC);
     out = getFrontStr(out, out.indexOf('.') + 6);
     for (int i = out.length() - 1; i >= 0; i--) {
       cchr = out.charAt(i);
@@ -1792,11 +1810,25 @@ void clrTxtBfr() {
 }
 void setFGColor(byte color) {
   fgc = color;
-  GFX.setPenColor((bitRead(color, 5) * 2 + bitRead(color, 4)) * 64, (bitRead(color, 3) * 2 + bitRead(color, 2)) * 64, (bitRead(color, 1) * 2 + bitRead(color, 0)) * 64);
+  if (MODE16C) {
+    bool hclr = bitRead(color, 3);
+    if (color == 8) {GFX.setPenColor(64, 64, 64);} else {
+      GFX.setPenColor(bitRead(color, 2) * 128 + bitRead(color, 2) * (hclr * 64), bitRead(color, 1) * 128 + bitRead(color, 1) * (hclr * 64), bitRead(color, 0) * 128 + bitRead(color, 0) * (hclr * 64));
+    }
+  } else {
+    GFX.setPenColor((bitRead(color, 5) * 2 + bitRead(color, 4)) * 64, (bitRead(color, 3) * 2 + bitRead(color, 2)) * 64, (bitRead(color, 1) * 2 + bitRead(color, 0)) * 64);
+  }
 }
 void setBGColor(byte color) {
   bgc = color;
-  GFX.setBrushColor((bitRead(color, 5) * 2 + bitRead(color, 4)) * 64, (bitRead(color, 3) * 2 + bitRead(color, 2)) * 64, (bitRead(color, 1) * 2 + bitRead(color, 0)) * 64);
+  if (MODE16C) {
+    bool hclr = bitRead(color, 3);
+    if (color == 8) {GFX.setBrushColor(64, 64, 64);} else {
+      GFX.setBrushColor(bitRead(color, 2) * 128 + bitRead(color, 2) * (hclr * 64), bitRead(color, 1) * 128 + bitRead(color, 1) * (hclr * 64), bitRead(color, 0) * 128 + bitRead(color, 0) * (hclr * 64));
+    }
+  } else {
+    GFX.setBrushColor((bitRead(color, 5) * 2 + bitRead(color, 4)) * 64, (bitRead(color, 3) * 2 + bitRead(color, 2)) * 64, (bitRead(color, 1) * 2 + bitRead(color, 0)) * 64);
+  }
 }
 void drawCursor(int x, int y) {
   if (bitRead(cblink(), 0)) {
